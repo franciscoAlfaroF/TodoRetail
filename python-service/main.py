@@ -2,8 +2,6 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional
 
-from lider_scraper import search_lider
-
 app = FastAPI(title="TodoRetail Python Service")
 
 class ExtractionRequest(BaseModel):
@@ -26,11 +24,11 @@ def health_check():
 
 @app.post("/extract", response_model=ExtractionResponse)
 def extract_data(request: ExtractionRequest):
-    valid_supermarkets = {"Jumbo", "Lider"}
+    valid_supermarkets = {"Jumbo", "Lider", "Santa Isabel"}
     
     for sm in request.supermarkets:
         if sm not in valid_supermarkets:
-            raise HTTPException(status_code=400, detail=f"Supermercado '{sm}' no soportado aún.")
+            raise HTTPException(status_code=400, detail=f"Supermercado '{sm}' no soportado aǧn.")
             
     results = []
     
@@ -43,5 +41,14 @@ def extract_data(request: ExtractionRequest):
         results.append(
             ProductResult(supermarket="Lider", name=f"{request.query} Acuenta (Mock)", price=1990, url="https://lider.cl/mock")
         )
+        
+    if "Santa Isabel" in request.supermarkets:
+        try:
+            from sisa_scraper import search_santa_isabel
+            sisa_products = search_santa_isabel(request.query)
+            for prod in sisa_products:
+                results.append(ProductResult(**prod))
+        except Exception as e:
+            print("Error sisa:", e)
         
     return ExtractionResponse(status="success", results=results)

@@ -3,6 +3,7 @@ import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
 import { catchError } from 'rxjs/operators';
+import { PrismaService } from './prisma.service.js';
 
 @Injectable()
 export class AppService {
@@ -11,7 +12,8 @@ export class AppService {
 
   constructor(
     private readonly httpService: HttpService,
-    private readonly configService: ConfigService
+    private readonly configService: ConfigService,
+    private readonly prisma: PrismaService
   ) {
     this.pythonServiceUrl = this.configService.get<string>('PYTHON_SERVICE_URL') || 'http://localhost:8000';
   }
@@ -19,7 +21,7 @@ export class AppService {
   async delegateExtractionToPython(query: string) {
     const payload = {
       query,
-      supermarkets: ["Jumbo", "Lider"]
+      supermarkets: ["Jumbo", "Lider", "Santa Isabel"]
     };
 
     const { data } = await firstValueFrom(
@@ -30,6 +32,23 @@ export class AppService {
         }),
       ),
     );
+
+    // Save real products to Database
+    if (data && data.results) {
+      for (const prod of data.results) {
+        // Solamente guardar si no es un mock
+        if (!prod.name.includes('(Mock)')) {
+          await this.prisma.product.create({
+            data: {
+              supermarket: prod.supermarket,
+              name: prod.name,
+              price: prod.price,
+              url: prod.url || '',
+            }
+          });
+        }
+      }
+    }
 
     return data;
   }

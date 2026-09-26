@@ -1,14 +1,10 @@
-# Stage 1: Build dependencies
-FROM python:3.11-slim as builder
+FROM mcr.microsoft.com/playwright/python:v1.42.0-jammy
+
 WORKDIR /app
 COPY requirements.txt .
-RUN pip install --user --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Stage 2: Run
-FROM python:3.11-slim
-WORKDIR /app
-COPY --from=builder /root/.local /root/.local
 COPY . .
-ENV PATH=/root/.local/bin:$PATH
+
 EXPOSE 8000
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
