@@ -2,6 +2,8 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional
 
+from lider_scraper import search_lider
+
 app = FastAPI(title="TodoRetail Python Service")
 
 class ExtractionRequest(BaseModel):
@@ -30,15 +32,16 @@ def extract_data(request: ExtractionRequest):
         if sm not in valid_supermarkets:
             raise HTTPException(status_code=400, detail=f"Supermercado '{sm}' no soportado aún.")
             
-    mock_results = []
+    results = []
     
     if "Jumbo" in request.supermarkets:
-        mock_results.append(
-            ProductResult(supermarket="Jumbo", name=f"{request.query} Premium", price=2500, url="https://jumbo.cl/mock")
-        )
-    if "Lider" in request.supermarkets:
-        mock_results.append(
-            ProductResult(supermarket="Lider", name=f"{request.query} Acuenta", price=1990, url="https://lider.cl/mock")
+        results.append(
+            ProductResult(supermarket="Jumbo", name=f"{request.query} Premium (Mock)", price=2500, url="https://jumbo.cl/mock")
         )
         
-    return ExtractionResponse(status="success", results=mock_results)
+    if "Lider" in request.supermarkets:
+        results.append(
+            ProductResult(supermarket="Lider", name=f"{request.query} Acuenta (Mock)", price=1990, url="https://lider.cl/mock")
+        )
+        
+    return ExtractionResponse(status="success", results=results)
