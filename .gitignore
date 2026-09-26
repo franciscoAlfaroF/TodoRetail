@@ -1,0 +1,10 @@
+node_modules/
+dist/
+www/
+.env
+*.pem
+.terraform/
+*.tfstate
+*.tfstate.backup
+__pycache__/
+*.pyc

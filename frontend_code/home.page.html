@@ -1,0 +1,30 @@
+<ion-header [translucent]="true">
+  <ion-toolbar color="primary">
+    <ion-title>TodoRetail</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true" class="ion-padding">
+  <ion-searchbar [(ngModel)]="query" placeholder="Ej. Leche descremada..." (ionChange)="searchProducts()"></ion-searchbar>
+  
+  <div class="ion-text-center ion-margin-top" *ngIf="loading">
+    <ion-spinner></ion-spinner>
+    <p>Comparando precios en Jumbo y Lider...</p>
+  </div>
+
+  <ion-text color="danger" *ngIf="error">
+    <p class="ion-text-center">{{ error }}</p>
+  </ion-text>
+
+  <ion-list *ngIf="!loading && products.length > 0">
+    <ion-item *ngFor="let product of products">
+      <ion-label>
+        <h2>{{ product.name }}</h2>
+        <p color="medium">{{ product.supermarket }}</p>
+      </ion-label>
+      <ion-note slot="end" color="success" class="ion-text-bold">
+        ${{ product.price }}
+      </ion-note>
+    </ion-item>
+  </ion-list>
+</ion-content>

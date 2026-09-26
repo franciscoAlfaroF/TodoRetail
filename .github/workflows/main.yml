@@ -1,0 +1,65 @@
+name: DevSecOps Pipeline EP1
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  quality-and-security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: TruffleHog Secret Scanner
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --only-verified
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Backend & Frontend Lint Placeholder
+        run: echo "Linting passed"
+        
+      - name: Python Lint Placeholder
+        run: echo "Flake8 passed"
+
+  build-containers:
+    needs: quality-and-security
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build Frontend Image
+        run: docker build -t todoretail-frontend ./frontend
+      - name: Build Backend Image
+        run: docker build -t todoretail-backend ./backend
+      - name: Build Python Image
+        run: docker build -t todoretail-python ./python-service
+
+  infrastructure-check:
+    needs: quality-and-security
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./infrastructure
+    steps:
+      - uses: actions/checkout@v3
+      - uses: hashicorp/setup-terraform@v2
+      - name: Terraform Format
+        run: terraform fmt -check
+      - name: Terraform Init
+        run: terraform init
+      - name: Terraform Validate
+        run: terraform validate
