@@ -12,6 +12,7 @@ model Product {
   supermarket String
   name        String
   price       Float
+  isOffer     Boolean  @default(false)
   url         String?
   createdAt   DateTime @default(now())
 }

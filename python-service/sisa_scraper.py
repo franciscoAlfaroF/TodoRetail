@@ -15,21 +15,32 @@ def search_santa_isabel(query: str) -> List[Dict]:
             
             # Extract data via JS
             products = page.evaluate("""() => {
-                const res = [];
-                const prices = Array.from(document.querySelectorAll('*')).filter(el => 
-                    el.children.length === 0 && 
-                    el.textContent.trim().startsWith('$') && 
-                    !el.textContent.includes('kg') && 
-                    !el.textContent.includes('-')
-                );
+                let res = [];
+                let cards = Array.from(document.querySelectorAll('a')).filter(a => a.href && a.href.includes('/p') && a.textContent.includes('$'));
                 
-                prices.forEach(p => {
-                    let container = p.closest('a') || p.closest('[data-testid="product-card"]') || p.closest('div[class*="product"]');
-                    if (container) {
-                        let nameEl = container.querySelector('h3, h2, [class*="name"]');
-                        let name = nameEl ? nameEl.textContent.trim() : container.textContent.substring(0, 50).trim();
-                        let url = container.href || '';
-                        res.push({name: name, price: p.textContent.trim(), url: url});
+                cards.forEach(card => {
+                    let nameEl = card.querySelector('h2, h3, [class*="name"]');
+                    if(!nameEl) return;
+                    let name = nameEl.textContent.trim();
+                    
+                    let textNodes = [];
+                    let walker = document.createTreeWalker(card, NodeFilter.SHOW_TEXT, null, false);
+                    let node;
+                    while(node = walker.nextNode()) {
+                        let text = node.textContent.trim();
+                        if(text.startsWith('$') && !text.includes('kg') && !text.includes('-')) {
+                            textNodes.push(text);
+                        }
+                    }
+                    
+                    let prices = textNodes.map(p => parseFloat(p.replace('$', '').replace('.', ''))).filter(v => !isNaN(v));
+                    if(prices.length > 0) {
+                        let minPrice = Math.min(...prices);
+                        let isOffer = prices.length > 1; 
+                        if(!isOffer) {
+                           isOffer = card.textContent.toLowerCase().includes('oferta');
+                        }
+                        res.push({name: name, price: minPrice, url: card.href, is_offer: isOffer});
                     }
                 });
                 return res;
@@ -42,16 +53,11 @@ def search_santa_isabel(query: str) -> List[Dict]:
                     continue
                 seen.add(name)
                 
-                price_str = prod['price'].replace('$', '').replace('.', '').replace(' ', '')
-                try:
-                    price = float(price_str)
-                except ValueError:
-                    continue
-                
                 results.append({
                     "supermarket": "Santa Isabel",
                     "name": name,
-                    "price": price,
+                    "price": prod['price'],
+                    "is_offer": prod.get('is_offer', False),
                     "url": prod['url']
                 })
                 

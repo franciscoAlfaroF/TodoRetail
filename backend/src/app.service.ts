@@ -43,6 +43,7 @@ export class AppService {
               supermarket: prod.supermarket,
               name: prod.name,
               price: prod.price,
+              isOffer: prod.is_offer || false,
               url: prod.url || '',
             }
           });

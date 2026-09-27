@@ -6,6 +6,7 @@ export interface ProductResult {
   supermarket: string;
   name: string;
   price: number;
+  is_offer?: boolean;
 }
 
 export interface ExtractResponse {

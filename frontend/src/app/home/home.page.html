@@ -19,7 +19,10 @@
   <ion-list *ngIf="!loading && products.length > 0">
     <ion-item *ngFor="let product of products">
       <ion-label>
-        <h2>{{ product.name }}</h2>
+        <h2>
+          {{ product.name }} 
+          <ion-badge color="danger" *ngIf="product.is_offer">¡Oferta!</ion-badge>
+        </h2>
         <p color="medium">{{ product.supermarket }}</p>
       </ion-label>
       <ion-note slot="end" color="success" class="ion-text-bold">

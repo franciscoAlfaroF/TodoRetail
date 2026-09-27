@@ -12,6 +12,7 @@ class ProductResult(BaseModel):
     supermarket: str
     name: str
     price: float
+    is_offer: bool = False
     url: Optional[str] = None
 
 class ExtractionResponse(BaseModel):
