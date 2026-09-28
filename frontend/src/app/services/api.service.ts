@@ -7,6 +7,7 @@ export interface ProductResult {
   name: string;
   price: number;
   is_offer?: boolean;
+  url?: string;
 }
 
 export interface ExtractResponse {
