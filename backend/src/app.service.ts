@@ -21,7 +21,7 @@ export class AppService {
   async delegateExtractionToPython(query: string) {
     const payload = {
       query,
-      supermarkets: ["Jumbo", "Lider", "Santa Isabel"]
+      supermarkets: ["Santa Isabel", "Unimarc"]
     };
 
     const { data } = await firstValueFrom(
