@@ -28,7 +28,7 @@ def search_santa_isabel(query: str) -> List[Dict]:
                     let node;
                     while(node = walker.nextNode()) {
                         let text = node.textContent.trim();
-                        if(text.startsWith('$') && !text.includes('kg') && !text.includes('-')) {
+                        if(text.startsWith('$') && !/[a-zA-Z]/.test(text) && !text.includes('-')) {
                             textNodes.push(text);
                         }
                     }
