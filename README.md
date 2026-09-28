@@ -34,50 +34,12 @@ Familias, estudiantes, dueños de casa y cualquier persona interesada en optimiz
 * Visualización del precio más bajo garantizado.
 * Redirección directa al supermercado para concretar la compra.
 
-## 10. Arquitectura General y Diagramas
-El sistema utiliza una arquitectura orientada a microservicios. A continuación se presentan los diagramas exigidos:
-
-### Diagrama de Contenedores y Flujo
-```mermaid
-flowchart TD
-    User([Usuario]) -->|Ingresa término de búsqueda| Frontend(Frontend Ionic/Angular)
-    Frontend -->|HTTP GET /api/extract| Backend(API Backend NestJS)
-    Backend -->|HTTP POST /extract| Python(Servicio Python FastAPI)
-    Python -->|Web Scraping (Playwright)| Fuentes[(Jumbo, Santa Isabel, Unimarc)]
-    Python -->|Retorna JSON estandarizado| Backend
-    Backend -->|Aplica NLP y agrupa| Backend
-    Backend -->|Persiste historial| DB[(PostgreSQL)]
-    Backend -->|Retorna resultados| Frontend
-```
-
-### Modelo de Base de Datos
-```mermaid
-erDiagram
-    Product {
-        Int id PK
-        String supermarket
-        String name
-        Float price
-        Boolean isOffer
-        String url
-        DateTime createdAt
-    }
-```
-
-### Diagrama de Despliegue Preliminar (Docker)
-```mermaid
-flowchart LR
-    subgraph Host Docker
-        Nginx(Nginx Frontend Port 8100)
-        Nest(NestJS Backend Port 3000)
-        FastAPI(Python Service Port 8000)
-        PG[(PostgreSQL Port 5432)]
-        
-        Nginx -.->|API Calls| Nest
-        Nest -.->|API Calls| FastAPI
-        Nest -.->|TCP| PG
-    end
-```
+## 10. Arquitectura General
+El sistema utiliza una arquitectura orientada a microservicios:
+* **Frontend**: Angular + Ionic Framework + Capacitor.
+* **Backend API**: NestJS (TypeScript).
+* **Persistencia**: PostgreSQL.
+* **Procesamiento y Extracción**: FastAPI (Python) + Playwright.
 
 ## 11. Tecnologías y Herramientas Utilizadas
 * **Lenguajes**: TypeScript, Python, HTML/SCSS.
