@@ -7,6 +7,15 @@
 <ion-content [fullscreen]="true" class="ion-padding">
   <ion-searchbar [(ngModel)]="query" placeholder="Ej. Leche descremada..." (ionChange)="searchProducts()"></ion-searchbar>
   
+  <ion-item *ngIf="products.length > 0 || loading" lines="none">
+    <ion-label>Ordenar por precio</ion-label>
+    <ion-select [(ngModel)]="sortOrder" (ionChange)="applySort()" interface="popover">
+      <ion-select-option value="asc">Menor a mayor</ion-select-option>
+      <ion-select-option value="desc">Mayor a menor</ion-select-option>
+      <ion-select-option value="none">Quitar filtros</ion-select-option>
+    </ion-select>
+  </ion-item>
+
   <div class="ion-text-center ion-margin-top" *ngIf="loading">
     <ion-spinner></ion-spinner>
     <p>Comparando precios...</p>

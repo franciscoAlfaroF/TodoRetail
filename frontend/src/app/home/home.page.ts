@@ -10,8 +10,10 @@ import { ApiService, ProductResult } from '../services/api.service';
 export class HomePage {
   query: string = '';
   products: ProductResult[] = [];
+  originalProducts: ProductResult[] = [];
   loading: boolean = false;
   error: string | null = null;
+  sortOrder: string = 'asc'; // asc, desc, none
 
   constructor(private apiService: ApiService, private cdr: ChangeDetectorRef) {}
 
@@ -24,7 +26,9 @@ export class HomePage {
     
     this.apiService.extractPrices(this.query).subscribe({
       next: (res) => {
+        this.originalProducts = [...res.results];
         this.products = res.results;
+        this.applySort(); // Default sorting
         this.loading = false;
         this.cdr.detectChanges();
       },
@@ -35,5 +39,15 @@ export class HomePage {
         console.error(err);
       }
     });
+  }
+
+  applySort() {
+    if (this.sortOrder === 'asc') {
+      this.products.sort((a, b) => a.price - b.price);
+    } else if (this.sortOrder === 'desc') {
+      this.products.sort((a, b) => b.price - a.price);
+    } else {
+      this.products = [...this.originalProducts];
+    }
   }
 }
