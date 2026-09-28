@@ -7,7 +7,7 @@
 <ion-content [fullscreen]="true" class="ion-padding">
   <ion-searchbar [(ngModel)]="query" placeholder="Ej. Leche descremada..." (ionChange)="searchProducts()"></ion-searchbar>
   
-  <ion-item *ngIf="products.length > 0 || loading" lines="none">
+  <ion-item *ngIf="groupedProducts.length > 0 || loading" lines="none">
     <ion-label>Ordenar por precio</ion-label>
     <ion-select [(ngModel)]="sortOrder" (ionChange)="applySort()" interface="popover">
       <ion-select-option value="asc">Menor a mayor</ion-select-option>
@@ -25,18 +25,31 @@
     <p class="ion-text-center">{{ error }}</p>
   </ion-text>
 
-  <ion-list *ngIf="!loading && products.length > 0">
-    <ion-item *ngFor="let product of products">
-      <ion-label>
-        <h2>
-          {{ product.name }} 
-          <ion-badge color="danger" *ngIf="product.is_offer">¡Oferta!</ion-badge>
-        </h2>
-        <p color="medium">{{ product.supermarket }}</p>
-      </ion-label>
-      <ion-note slot="end" color="success" class="ion-text-bold">
-        ${{ product.price }}
-      </ion-note>
-    </ion-item>
-  </ion-list>
+  <ion-accordion-group *ngIf="!loading && groupedProducts.length > 0" multiple="true">
+    <ion-accordion *ngFor="let group of groupedProducts" [value]="group.name">
+      <ion-item slot="header" color="light">
+        <ion-label>
+          <h2 class="ion-text-wrap"><b>{{ group.name }}</b></h2>
+          <p>Desde ${{ group.minPrice }} (en {{ group.prices.length }} supermercados)</p>
+        </ion-label>
+      </ion-item>
+      
+      <div class="ion-padding" slot="content">
+        <ion-list lines="full">
+          <ion-item *ngFor="let p of group.prices">
+            <ion-label>
+              {{ p.supermarket }}
+              <ion-badge color="danger" *ngIf="p.is_offer" class="ion-margin-start">¡Oferta!</ion-badge>
+            </ion-label>
+            <ion-note slot="end" [color]="p.price === group.minPrice ? 'success' : 'medium'" [class.ion-text-bold]="p.price === group.minPrice">
+              ${{ p.price }}
+            </ion-note>
+            <ion-button *ngIf="p.url" slot="end" fill="clear" [href]="p.url" target="_blank" size="small">
+              <ion-icon name="open-outline" slot="icon-only"></ion-icon>
+            </ion-button>
+          </ion-item>
+        </ion-list>
+      </div>
+    </ion-accordion>
+  </ion-accordion-group>
 </ion-content>
