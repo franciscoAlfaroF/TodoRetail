@@ -7,9 +7,7 @@
 TodoRetail automatiza la búsqueda y comparación de precios en tiempo real entre múltiples supermercados (Jumbo, Santa Isabel y Unimarc), agrupando productos idénticos para permitirle a los usuarios tomar decisiones de compra informadas y optimizar su presupuesto.
 
 ## 3. Identificación de los Integrantes
-* **[Tu Nombre]**: Integrante 1
-* **[Nombre 2]**: Integrante 2
-* **[Nombre 3]**: Integrante 3
+* **[Francisco Alfaro Flores]**: Integrante 1
 
 ## 4. Distribución de Responsabilidades
 * **[Tu Nombre]**: DevOps, Infraestructura (Terraform, Docker), Arquitectura Backend (NestJS, FastAPI) y algoritmos de agrupación NLP.
