@@ -67,9 +67,15 @@ def search_unimarc(query: str) -> List[Dict]:
                     let prices = pricesText.map(p => parseFloat(p.replace('$', '').replace('.', '').replace(/\\D/g, ''))).filter(v => !isNaN(v));
                     if(prices.length > 0 && name.length > 5) {
                         let minPrice = Math.min(...prices);
+                        
+                        let isOffer = prices.length > 1; 
+                        if(!isOffer) {
+                           isOffer = container.textContent.includes('%') || container.querySelector('[class*="line-through"]') !== null;
+                        }
+                        
                         let aTag = container.tagName === 'A' ? container : container.querySelector('a');
                         let url = aTag ? aTag.href : '';
-                        res.push({name: name, price: minPrice, url: url});
+                        res.push({name: name, price: minPrice, is_offer: isOffer, url: url});
                     }
                 });
                 
@@ -87,7 +93,7 @@ def search_unimarc(query: str) -> List[Dict]:
                     "supermarket": "Unimarc",
                     "name": name,
                     "price": prod['price'],
-                    "is_offer": False,
+                    "is_offer": prod.get('is_offer', False),
                     "url": prod['url']
                 })
                 

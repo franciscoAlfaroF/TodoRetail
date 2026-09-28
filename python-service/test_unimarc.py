@@ -22,13 +22,13 @@ def test_unimarc():
                 }
             }
             
-            // Group by common container (like an <a> tag or a <div> with a specific size)
+            // Group by common container
             let containers = new Map();
             textNodes.forEach(node => {
                 let parent = node.parentElement;
                 let container = parent.closest('a') || parent.closest('div[class*="shelf"]') || parent.closest('div[class*="Card"]');
                 
-                // Fallback: go up 5 levels
+                // Fallback
                 if(!container) {
                     container = parent;
                     for(let i=0; i<6; i++) {
@@ -43,13 +43,11 @@ def test_unimarc():
             });
             
             containers.forEach((pricesText, container) => {
-                // Try to find name
                 let name = '';
                 let nameEl = container.querySelector('h2, h3, p[class*="name"], p[class*="title"], div[class*="name"]');
                 if(nameEl) {
                     name = nameEl.textContent.trim();
                 } else {
-                    // Just get the longest text node that doesn't have a $
                     let w = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null, false);
                     let n;
                     let longest = '';
@@ -63,10 +61,21 @@ def test_unimarc():
                 let prices = pricesText.map(p => parseFloat(p.replace('$', '').replace('.', '').replace(/\\D/g, ''))).filter(v => !isNaN(v));
                 if(prices.length > 0 && name.length > 5) {
                     let minPrice = Math.min(...prices);
-                    // Find URL
-                    let aTag = container.tagName === 'A' ? container : container.querySelector('a');
-                    let url = aTag ? aTag.href : '';
-                    res.push({name: name, price: minPrice, url: url});
+                    
+                    let hasPercent = container.textContent.includes('%');
+                    let hasLineThrough = container.querySelector('[class*="line-through"]') !== null;
+                    let numPrices = prices.length;
+                    let isOffer = numPrices > 1 || hasPercent || hasLineThrough;
+                        
+                    res.push({
+                        name: name, 
+                        price: minPrice, 
+                        is_offer: isOffer,
+                        debug_percent: hasPercent,
+                        debug_line: hasLineThrough,
+                        debug_prices: numPrices,
+                        raw_text: container.textContent.substring(0, 50)
+                    });
                 }
             });
             
