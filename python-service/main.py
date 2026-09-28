@@ -25,11 +25,11 @@ def health_check():
 
 @app.post("/extract", response_model=ExtractionResponse)
 def extract_data(request: ExtractionRequest):
-    valid_supermarkets = {"Jumbo", "Lider", "Santa Isabel"}
+    valid_supermarkets = {"Jumbo", "Lider", "Santa Isabel", "Unimarc"}
     
     for sm in request.supermarkets:
         if sm not in valid_supermarkets:
-            raise HTTPException(status_code=400, detail=f"Supermercado '{sm}' no soportado aǧn.")
+            raise HTTPException(status_code=400, detail=f"Supermercado '{sm}' no soportado aún.")
             
     results = []
     
@@ -51,5 +51,14 @@ def extract_data(request: ExtractionRequest):
                 results.append(ProductResult(**prod))
         except Exception as e:
             print("Error sisa:", e)
+            
+    if "Unimarc" in request.supermarkets:
+        try:
+            from unimarc_scraper import search_unimarc
+            unimarc_products = search_unimarc(request.query)
+            for prod in unimarc_products:
+                results.append(ProductResult(**prod))
+        except Exception as e:
+            print("Error unimarc:", e)
         
     return ExtractionResponse(status="success", results=results)
