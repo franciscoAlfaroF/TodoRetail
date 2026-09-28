@@ -30,16 +30,19 @@
       <ion-item slot="header" color="light">
         <ion-label>
           <h2 class="ion-text-wrap"><b>{{ group.name }}</b></h2>
-          <p>Desde ${{ group.minPrice }} (en {{ group.prices.length }} supermercados)</p>
+          <p>Desde ${{ group.minPrice }} (en {{ group.uniqueSupermarkets }} supermercados)</p>
         </ion-label>
       </ion-item>
       
       <div class="ion-padding" slot="content">
         <ion-list lines="full">
           <ion-item *ngFor="let p of group.prices">
-            <ion-label>
-              {{ p.supermarket }}
-              <ion-badge color="danger" *ngIf="p.is_offer" class="ion-margin-start">¡Oferta!</ion-badge>
+            <ion-label class="ion-text-wrap">
+              <h2>
+                {{ p.supermarket }}
+                <ion-badge color="danger" *ngIf="p.is_offer" class="ion-margin-start">¡Oferta!</ion-badge>
+              </h2>
+              <p color="medium">{{ p.original_name }}</p>
             </ion-label>
             <ion-note slot="end" [color]="p.price === group.minPrice ? 'success' : 'medium'" [class.ion-text-bold]="p.price === group.minPrice">
               ${{ p.price }}
