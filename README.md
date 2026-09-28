@@ -4,15 +4,13 @@
 **TodoRetail**: Plataforma inteligente de comparación de precios de supermercados.
 
 ## 2. Descripción Breve
-TodoRetail automatiza la búsqueda y comparación de precios en tiempo real entre múltiples supermercados (Jumbo, Santa Isabel y Unimarc), agrupando productos idénticos para permitirle a los usuarios tomar decisiones de compra informadas y optimizar su presupuesto.
+TodoRetail automatiza la búsqueda y comparación de precios en tiempo real entre múltiples supermercados (Jumbo, Santa Isabel y Unimarc, se busca ampliar el scraping), agrupando productos idénticos para permitirle a los usuarios tomar decisiones de compra informadas y optimizar su presupuesto.
 
 ## 3. Identificación de los Integrantes
-* **[Francisco Alfaro Flores]**: Integrante 1
+* Francisco Alfaro Flores
 
 ## 4. Distribución de Responsabilidades
-* **[Tu Nombre]**: DevOps, Infraestructura (Terraform, Docker), Arquitectura Backend (NestJS, FastAPI) y algoritmos de agrupación NLP.
-* **[Nombre 2]**: Desarrollo Frontend (Angular, Ionic) y UI/UX.
-* **[Nombre 3]**: Integración de Datos (Web Scraping en Python), testing y QA.
+* Francisco Alfaro Flores: DevOps, Infraestructura (Terraform, Docker), Arquitectura Backend (NestJS, FastAPI) y algoritmos de agrupación NLP. Desarrollo Frontend (Angular, Ionic) y UI/UX. Integración de Datos (Web Scraping en Python), testing y QA.
 
 ## 5. Problema o Necesidad Abordada
 Las personas gastan tiempo y dinero intentando encontrar los mejores precios para sus compras de supermercado, visitando múltiples sitios web o locales físicos. La inflación y la variación diaria de precios dificultan saber dónde conviene comprar.
@@ -91,6 +89,6 @@ docker compose up --build -d
 ## 20. Enlaces y Documentación Adicional
 * **Enlace al ambiente de Staging**: [EN CONSTRUCCIÓN]
 * **Enlace al prototipo Figma**: [EN CONSTRUCCIÓN]
-* **Documentación de la API**: [EN CONSTRUCCIÓN - Swagger UI en /api/docs]
+* **Documentación de la API**: [EN CONSTRUCCIÓN]
 * **Limitaciones**: La búsqueda depende de la latencia y disponibilidad de los sitios web externos, ya que opera en tiempo real.
-* **Trabajo Futuro**: Implementar almacenamiento en caché (Redis) e indexación periódica para respuestas instantáneas.
+* **Trabajo Futuro**: Agregar más supermercados, mejorar filtros especificos por prodcuto, mejoras UI y UX, capacidad de crear cuentas para guardas productos y generar recomendaciones, implementar almacenamiento en caché (Redis) e indexación periódica para respuestas instantáneas.
