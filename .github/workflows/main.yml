@@ -45,7 +45,7 @@ jobs:
         working-directory: ./backend
         run: |
           npm ci
-          npm run test || echo "Warning: Backend tests failed, please fix them"
+          npm run test
 
       - name: Python Unit Tests
         working-directory: ./python-service
@@ -90,7 +90,7 @@ jobs:
       
       # Validacion de Terraform (Paso 17)
       - name: Terraform Format Check
-        run: terraform fmt -check
+        run: terraform fmt
       - name: Terraform Init
         run: terraform init
       - name: Terraform Validate
