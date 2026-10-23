@@ -1,0 +1,163 @@
+<ion-header [translucent]="true">
+  <ion-toolbar color="primary">
+    <ion-title>TodoRetail - Acceso</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="goToHome()">
+        Invitado
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true" class="ion-padding auth-content">
+  <div class="auth-container">
+    <div class="ion-text-center ion-margin-bottom brand-header">
+      <h1 class="brand-title">🛒 TodoRetail</h1>
+      <p class="brand-subtitle">Comparador inteligente de precios de supermercados</p>
+    </div>
+
+    <ion-card class="auth-card">
+      <ion-card-header>
+        <ion-segment [value]="isRegisterMode ? 'register' : 'login'" (ionChange)="toggleMode($event.detail.value === 'register')">
+          <ion-segment-button value="login">
+            <ion-label>Iniciar Sesión</ion-label>
+          </ion-segment-button>
+          <ion-segment-button value="register">
+            <ion-label>Registrarse</ion-label>
+          </ion-segment-button>
+        </ion-segment>
+      </ion-card-header>
+
+      <ion-card-content>
+        <!-- Mensaje de error general -->
+        <ion-text color="danger" *ngIf="errorMessage">
+          <div class="error-banner ion-padding-vertical ion-text-center">
+            <b>{{ errorMessage }}</b>
+          </div>
+        </ion-text>
+
+        <!-- FORMULARIO DE INICIO DE SESIÓN -->
+        <form [formGroup]="loginForm" (ngSubmit)="onLogin()" *ngIf="!isRegisterMode">
+          <ion-item lines="inset" class="auth-item">
+            <ion-label position="stacked">Correo Electrónico</ion-label>
+            <ion-input
+              type="email"
+              formControlName="email"
+              placeholder="usuario@ejemplo.com"
+              autocomplete="email"
+            ></ion-input>
+          </ion-item>
+          <div class="validation-error" *ngIf="loginForm.get('email')?.touched && loginForm.get('email')?.invalid">
+            <ion-text color="danger" *ngIf="loginForm.get('email')?.hasError('required')">
+              El correo es requerido.
+            </ion-text>
+            <ion-text color="danger" *ngIf="loginForm.get('email')?.hasError('email')">
+              Ingresa un correo electrónico válido.
+            </ion-text>
+          </div>
+
+          <ion-item lines="inset" class="auth-item ion-margin-top">
+            <ion-label position="stacked">Contraseña</ion-label>
+            <ion-input
+              type="password"
+              formControlName="password"
+              placeholder="••••••••"
+              autocomplete="current-password"
+            ></ion-input>
+          </ion-item>
+          <div class="validation-error" *ngIf="loginForm.get('password')?.touched && loginForm.get('password')?.invalid">
+            <ion-text color="danger" *ngIf="loginForm.get('password')?.hasError('required')">
+              La contraseña es requerida.
+            </ion-text>
+            <ion-text color="danger" *ngIf="loginForm.get('password')?.hasError('minlength')">
+              Debe tener al menos 6 caracteres.
+            </ion-text>
+          </div>
+
+          <ion-button
+            expand="block"
+            type="submit"
+            color="primary"
+            class="ion-margin-top"
+            [disabled]="isLoading || loginForm.invalid"
+          >
+            <ion-spinner name="crescent" *ngIf="isLoading"></ion-spinner>
+            <span *ngIf="!isLoading">Ingresar</span>
+          </ion-button>
+        </form>
+
+        <!-- FORMULARIO DE REGISTRO -->
+        <form [formGroup]="registerForm" (ngSubmit)="onRegister()" *ngIf="isRegisterMode">
+          <ion-item lines="inset" class="auth-item">
+            <ion-label position="stacked">Nombre Completo</ion-label>
+            <ion-input
+              type="text"
+              formControlName="name"
+              placeholder="Ej. Juan Pérez"
+              autocomplete="name"
+            ></ion-input>
+          </ion-item>
+          <div class="validation-error" *ngIf="registerForm.get('name')?.touched && registerForm.get('name')?.invalid">
+            <ion-text color="danger">El nombre es requerido (mín. 2 letras).</ion-text>
+          </div>
+
+          <ion-item lines="inset" class="auth-item ion-margin-top">
+            <ion-label position="stacked">Correo Electrónico</ion-label>
+            <ion-input
+              type="email"
+              formControlName="email"
+              placeholder="usuario@ejemplo.com"
+              autocomplete="email"
+            ></ion-input>
+          </ion-item>
+          <div class="validation-error" *ngIf="registerForm.get('email')?.touched && registerForm.get('email')?.invalid">
+            <ion-text color="danger" *ngIf="registerForm.get('email')?.hasError('required')">
+              El correo es requerido.
+            </ion-text>
+            <ion-text color="danger" *ngIf="registerForm.get('email')?.hasError('email')">
+              Ingresa un correo electrónico válido.
+            </ion-text>
+          </div>
+
+          <ion-item lines="inset" class="auth-item ion-margin-top">
+            <ion-label position="stacked">Contraseña</ion-label>
+            <ion-input
+              type="password"
+              formControlName="password"
+              placeholder="Mínimo 6 caracteres"
+              autocomplete="new-password"
+            ></ion-input>
+          </ion-item>
+          <div class="validation-error" *ngIf="registerForm.get('password')?.touched && registerForm.get('password')?.invalid">
+            <ion-text color="danger">La contraseña debe tener al menos 6 caracteres.</ion-text>
+          </div>
+
+          <ion-item lines="inset" class="auth-item ion-margin-top">
+            <ion-label position="stacked">Rol en la Plataforma</ion-label>
+            <ion-select formControlName="role" interface="popover">
+              <ion-select-option value="USER">Usuario Estándar</ion-select-option>
+              <ion-select-option value="ADMIN">Administrador (Testing RBAC)</ion-select-option>
+            </ion-select>
+          </ion-item>
+
+          <ion-button
+            expand="block"
+            type="submit"
+            color="success"
+            class="ion-margin-top"
+            [disabled]="isLoading || registerForm.invalid"
+          >
+            <ion-spinner name="crescent" *ngIf="isLoading"></ion-spinner>
+            <span *ngIf="!isLoading">Crear Cuenta</span>
+          </ion-button>
+        </form>
+
+        <div class="ion-text-center ion-margin-top">
+          <ion-button fill="clear" size="small" color="medium" (click)="goToHome()">
+            Continuar sin registrarse (Modo Visitante)
+          </ion-button>
+        </div>
+      </ion-card-content>
+    </ion-card>
+  </div>
+</ion-content>
