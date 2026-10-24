@@ -1,11 +1,57 @@
 <ion-header [translucent]="true">
   <ion-toolbar color="primary">
-    <ion-title>TodoRetail</ion-title>
+    <ion-title>🛒 TodoRetail</ion-title>
+
+    <ion-buttons slot="end">
+      <!-- Si el usuario está autenticado -->
+      <ng-container *ngIf="isAuthenticated$ | async; else notLogged">
+        <ng-container *ngIf="currentUser$ | async as user">
+          <ion-chip color="light" class="ion-hide-sm-down">
+            <ion-icon name="person-circle-outline"></ion-icon>
+            <ion-label>{{ user.name || user.email }}</ion-label>
+            <ion-badge [color]="user.role === 'ADMIN' ? 'warning' : 'secondary'">
+              {{ user.role }}
+            </ion-badge>
+          </ion-chip>
+
+          <!-- Botón para probar endpoint protegido de Administrador si es ADMIN -->
+          <ion-button *ngIf="user.role === 'ADMIN'" fill="outline" color="warning" size="small" (click)="testAdminAccess()">
+            Panel Admin
+          </ion-button>
+        </ng-container>
+
+        <ion-button fill="clear" color="light" (click)="logout()" title="Cerrar Sesión">
+          <ion-icon name="log-out-outline" slot="icon-only"></ion-icon>
+        </ion-button>
+      </ng-container>
+
+      <!-- Si el usuario es visitante o no ha iniciado sesión -->
+      <ng-template #notLogged>
+        <ion-button fill="solid" color="light" size="default" (click)="goToLogin()">
+          <ion-icon name="person-circle-outline" slot="start"></ion-icon>
+          Iniciar Sesión
+        </ion-button>
+      </ng-template>
+    </ion-buttons>
+  </ion-toolbar>
+
+  <!-- Barra de bienvenida para móviles si está autenticado -->
+  <ion-toolbar color="light" class="ion-hide-sm-up" *ngIf="currentUser$ | async as user">
+    <ion-item lines="none" color="light">
+      <ion-icon name="person-circle" slot="start" color="primary"></ion-icon>
+      <ion-label>
+        <h3>{{ user.name || user.email }}</h3>
+        <p>Rol: <ion-badge [color]="user.role === 'ADMIN' ? 'warning' : 'secondary'">{{ user.role }}</ion-badge></p>
+      </ion-label>
+      <ion-button *ngIf="user.role === 'ADMIN'" slot="end" size="small" color="warning" (click)="testAdminAccess()">
+        Admin
+      </ion-button>
+    </ion-item>
   </ion-toolbar>
 </ion-header>
 
 <ion-content [fullscreen]="true" class="ion-padding">
-  <ion-searchbar [(ngModel)]="query" placeholder="Ej. Leche descremada..." (ionChange)="searchProducts()"></ion-searchbar>
+  <ion-searchbar [(ngModel)]="query" placeholder="Ej. Leche descremada, galletas..." (ionChange)="searchProducts()"></ion-searchbar>
   
   <ion-item *ngIf="groupedProducts.length > 0 || loading" lines="none">
     <ion-label>Ordenar por precio</ion-label>
@@ -18,7 +64,7 @@
 
   <div class="ion-text-center ion-margin-top" *ngIf="loading">
     <ion-spinner></ion-spinner>
-    <p>Comparando precios...</p>
+    <p>Comparando precios en supermercados...</p>
   </div>
 
   <ion-text color="danger" *ngIf="error">

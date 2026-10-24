@@ -1,0 +1,66 @@
+.auth-content {
+  --background: #f4f5f8;
+}
+
+.auth-container {
+  max-width: 480px;
+  margin: 2rem auto;
+}
+
+.brand-header {
+  .brand-title {
+    font-size: 2.2rem;
+    font-weight: 800;
+    color: var(--ion-color-primary, #3880ff);
+    margin-bottom: 0.25rem;
+  }
+
+  .brand-subtitle {
+    font-size: 0.95rem;
+    color: var(--ion-color-medium, #92949c);
+    margin-top: 0;
+  }
+}
+
+.auth-card {
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+
+  ion-card-header {
+    padding-bottom: 0;
+  }
+}
+
+.auth-item {
+  --background: #f8f9fa;
+  --color: #212529;
+  border-radius: 8px;
+  margin-top: 0.5rem;
+}
+
+.auth-item ion-label {
+  color: #495057;
+}
+
+.auth-item ion-input {
+  --color: #212529;
+  --placeholder-color: #6c757d;
+  --placeholder-opacity: 1;
+}
+
+.auth-item ion-select {
+  --color: #212529;
+}
+
+.validation-error {
+  padding-left: 1rem;
+  padding-top: 0.25rem;
+  font-size: 0.8rem;
+}
+
+.error-banner {
+  background-color: #ffebee;
+  border-radius: 8px;
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+}

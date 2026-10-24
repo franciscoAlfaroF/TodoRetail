@@ -1,5 +1,9 @@
 import { Component, ChangeDetectorRef } from '@angular/core';
 import { ApiService, ProductResult } from '../services/api.service';
+import { AuthService, User } from '../services/auth.service';
+import { Router } from '@angular/router';
+import { Observable } from 'rxjs';
+import { AlertController } from '@ionic/angular/lazy';
 
 export interface SupermarketPrice {
   supermarket: string;
@@ -30,15 +34,58 @@ export class HomePage {
   error: string | null = null;
   sortOrder: string = 'asc'; // asc, desc, none
 
-  constructor(private apiService: ApiService, private cdr: ChangeDetectorRef) {}
+  currentUser$: Observable<User | null>;
+  isAuthenticated$: Observable<boolean>;
+
+  constructor(
+    private apiService: ApiService,
+    public authService: AuthService,
+    private router: Router,
+    private cdr: ChangeDetectorRef,
+    private alertCtrl: AlertController,
+  ) {
+    this.currentUser$ = this.authService.currentUser$;
+    this.isAuthenticated$ = this.authService.isAuthenticated$;
+  }
+
+  goToLogin() {
+    this.router.navigate(['/login']);
+  }
+
+  logout() {
+    this.authService.logout();
+  }
+
+  async testAdminAccess() {
+    this.authService.getAdminData().subscribe({
+      next: async (res) => {
+        const alert = await this.alertCtrl.create({
+          header: 'Autorización Exitosa (RBAC)',
+          subHeader: 'Endpoint Protegido para Administradores',
+          message: `${res.message} (Usuario: ${res.user.email})`,
+          buttons: ['OK'],
+        });
+        await alert.present();
+      },
+      error: async (err) => {
+        const alert = await this.alertCtrl.create({
+          header: 'Acceso Denegado (RBAC)',
+          subHeader: 'Código: 403 Forbidden',
+          message: err.error?.message || 'No tienes permisos de Administrador para acceder a este recurso.',
+          buttons: ['OK'],
+        });
+        await alert.present();
+      },
+    });
+  }
 
   searchProducts() {
     if (!this.query.trim()) return;
-    
+
     this.loading = true;
     this.error = null;
     this.cdr.detectChanges();
-    
+
     this.apiService.extractPrices(this.query).subscribe({
       next: (res) => {
         const groups = this.groupProducts(res.results);
@@ -49,11 +96,11 @@ export class HomePage {
         this.cdr.detectChanges();
       },
       error: (err) => {
-        this.error = 'Ocurrio un error consultando los precios.';
+        this.error = 'Ocurrió un error consultando los precios.';
         this.loading = false;
         this.cdr.detectChanges();
         console.error(err);
-      }
+      },
     });
   }
 
@@ -68,85 +115,83 @@ export class HomePage {
       lower = lower.replace(/\blts?\b/g, 'l');
       // Unir números con unidades (ej "1.25 l" -> "1.25l")
       lower = lower.replace(/(\d+(?:[.,]\d+)?)\s*(ml|l|g|kg)\b/g, '$1$2');
-      // Eliminar palabras basura
-      const filler = ['desechable', 'retornable', 'botella', 'lata', 'envase', 'pack', 'display', 'pote', 'bolsa'];
-      for (const w of filler) {
-        lower = lower.replace(new RegExp(`\\b${w}\\b`, 'g'), ' ');
-      }
-      
-      const volumeMatch = lower.match(/(\d+(?:[.,]\d+)?)(ml|l|g|kg)/);
-      const volume = volumeMatch ? volumeMatch[0] : null;
-      
-      let clean = lower;
-      if (volume) clean = clean.replace(volume, ' ');
-      
-      const words = Array.from(new Set(clean.match(/[a-z0-9ñ]+/g) || []));
-      return { volume, words, original: name };
-    };
 
-    const isMatch = (n1: ReturnType<typeof normalize>, n2: ReturnType<typeof normalize>) => {
-      if (n1.volume && n2.volume && n1.volume !== n2.volume) return false;
-      
-      // Reglas estrictas: Palabras que cambian drásticamente el producto.
-      // Si un producto la tiene, el otro está OBLIGADO a tenerla para agruparse.
-      const strictVariants = [
-        // Salud / Dieta
-        'zero', 'light', 'diet', 'sin azúcar', 'sin azucar', 'sin lactosa', 'vegan', 'vegano',
-        // Leches
-        'descremada', 'entera', 'semidescremada',
-        // Empaque / Cantidad
-        'pack', 'caja', 'display', 'tripack',
-        // Sabores / Ingredientes (El problema de las Tritón)
-        'vainilla', 'chocolate', 'cacao', 'naranja', 'frutilla', 'fresa', 'limón', 'limon', 
-        'manzana', 'piña', 'durazno', 'frambuesa', 'mora', 'caramelo', 'menta', 'almendra', 
-        'maní', 'mani', 'queso', 'jamón', 'jamon', 'pollo', 'carne'
+      const stopWords = [
+        'de', 'la', 'el', 'en', 'para', 'y', 'con', 'sin', 'un', 'una',
+        'pack', 'formato', 'familiar', 'desechable', 'retornable',
+        'botella', 'lata', 'bolsa', 'caja', 'unidades', 'unid', 'un.'
       ];
-      
-      const o1 = n1.original.toLowerCase();
-      const o2 = n2.original.toLowerCase();
-      
-      for (const v of strictVariants) {
-        const has1 = o1.includes(v);
-        const has2 = o2.includes(v);
-        if (has1 !== has2) return false;
-      }
-      
-      let intersection = 0;
-      for (const w of n1.words) {
-        if (n2.words.includes(w)) intersection++;
-      }
-      
-      const minLength = Math.min(n1.words.length, n2.words.length);
-      const maxLength = Math.max(n1.words.length, n2.words.length);
-      if (minLength === 0) return false;
-      
-      // Exigir al menos 60% de similitud respecto al nombre más largo, 
-      // o 100% respecto al más corto.
-      const matchMin = intersection / minLength;
-      const matchMax = intersection / maxLength;
-      
-      return matchMin >= 0.8 && matchMax >= 0.5;
+
+      return lower
+        .replace(/[^a-z0-9áéíóúüñ\s]/gi, ' ')
+        .split(/\s+/)
+        .filter((w) => w.length > 0 && !stopWords.includes(w));
     };
 
-    const normalizedResults = results.map(p => ({
-      product: p,
-      norm: normalize(p.name)
-    }));
+    const strictVariants = [
+      'zero', 'light', 'original', 'vainilla', 'chocolate', 'frutilla',
+      'naranja', 'limon', 'frambuesa', 'manzana', 'cola', 'diet',
+      'descremada', 'semidescremada', 'entera', 'sin lactosa', 'clasica',
+      'regular', 'negra', 'blanca'
+    ];
 
-    for (const item of normalizedResults) {
-      // Buscar si encaja en un grupo existente
-      let matchedGroup = groups.find(g => isMatch(normalize(g.name), item.norm));
-      
+    const getVariants = (lowerName: string) => {
+      return strictVariants.filter((v) => lowerName.includes(v));
+    };
+
+    const items = results.map((p) => {
+      const lower = p.name.toLowerCase().replace(/\bcc\b/g, 'ml');
+      return {
+        product: p,
+        tokens: normalize(p.name),
+        variants: getVariants(lower),
+      };
+    });
+
+    for (const item of items) {
+      let matchedGroup: GroupedProduct | null = null;
+      let highestSimilarity = 0;
+
+      for (const group of groups) {
+        const groupTokens = normalize(group.name);
+        const groupVariants = getVariants(group.name.toLowerCase().replace(/\bcc\b/g, 'ml'));
+
+        const variantsMatch =
+          item.variants.length === groupVariants.length &&
+          item.variants.every((v) => groupVariants.includes(v));
+
+        if (!variantsMatch) {
+          continue;
+        }
+
+        const intersection = item.tokens.filter((t) => groupTokens.includes(t));
+        const union = new Set([...item.tokens, ...groupTokens]);
+        const similarity = intersection.length / union.size;
+
+        if (similarity > 0.45 && similarity > highestSimilarity) {
+          highestSimilarity = similarity;
+          matchedGroup = group;
+        }
+      }
+
       if (matchedGroup) {
-        // Permitimos precios diferentes del mismo supermercado, pero evitamos el duplicado exacto
-        const exists = matchedGroup.prices.find(p => p.supermarket === item.product.supermarket && p.price === item.product.price && p.original_name === item.product.name);
-        if (!exists) {
+        const existingSupermarketPrice = matchedGroup.prices.find(
+          (p) => p.supermarket === item.product.supermarket,
+        );
+        if (existingSupermarketPrice) {
+          if (item.product.price < existingSupermarketPrice.price) {
+            existingSupermarketPrice.price = item.product.price;
+            existingSupermarketPrice.is_offer = item.product.is_offer || false;
+            existingSupermarketPrice.url = item.product.url;
+            existingSupermarketPrice.original_name = item.product.name;
+          }
+        } else {
           matchedGroup.prices.push({
             supermarket: item.product.supermarket,
             price: item.product.price,
             is_offer: item.product.is_offer || false,
             url: item.product.url,
-            original_name: item.product.name
+            original_name: item.product.name,
           });
           if (item.product.price < matchedGroup.minPrice) {
             matchedGroup.minPrice = item.product.price;
@@ -158,23 +203,25 @@ export class HomePage {
       } else {
         groups.push({
           name: item.product.name,
-          prices: [{
-            supermarket: item.product.supermarket,
-            price: item.product.price,
-            is_offer: item.product.is_offer || false,
-            url: item.product.url,
-            original_name: item.product.name
-          }],
-          minPrice: item.product.price
+          prices: [
+            {
+              supermarket: item.product.supermarket,
+              price: item.product.price,
+              is_offer: item.product.is_offer || false,
+              url: item.product.url,
+              original_name: item.product.name,
+            },
+          ],
+          minPrice: item.product.price,
         });
       }
     }
-    
+
     for (const group of groups) {
       group.prices.sort((a, b) => a.price - b.price);
-      group.uniqueSupermarkets = new Set(group.prices.map(p => p.supermarket)).size;
+      group.uniqueSupermarkets = new Set(group.prices.map((p) => p.supermarket)).size;
     }
-    
+
     return groups;
   }
 
