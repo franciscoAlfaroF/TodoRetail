@@ -33,8 +33,23 @@
 
 .auth-item {
   --background: #f8f9fa;
+  --color: #212529;
   border-radius: 8px;
   margin-top: 0.5rem;
+}
+
+.auth-item ion-label {
+  color: #495057;
+}
+
+.auth-item ion-input {
+  --color: #212529;
+  --placeholder-color: #6c757d;
+  --placeholder-opacity: 1;
+}
+
+.auth-item ion-select {
+  --color: #212529;
 }
 
 .validation-error {
