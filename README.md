@@ -84,7 +84,8 @@ docker compose up --build -d
 
 ## 19. Proceso de Construcción con Docker y Despliegue
 * Cada componente posee su propio `Dockerfile` (el frontend y backend utilizan construcciones *multi-stage* para optimizar el peso).
-* El despliegue a Staging está automatizado mediante GitHub Actions tras pasar los *Quality Gates* (TruffleHog, Trivy, Tests, Linting, Terraform Validate).
+* GitHub Actions valida linting, pruebas unitarias y E2E, builds de producción, auditoría de dependencias, detección de secretos, configuración de Docker Compose y formato/validación de Terraform. También construye las imágenes y bloquea esa etapa si Trivy detecta vulnerabilidades críticas o altas.
+* El workflow no despliega a Staging: ese paso queda pendiente hasta configurar un destino real y sus credenciales. No se considera exitoso un despliegue simulado.
 
 ## 20. Enlaces y Documentación Adicional
 * **Enlace al ambiente de Staging**: [EN CONSTRUCCIÓN]

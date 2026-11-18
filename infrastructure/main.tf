@@ -11,18 +11,6 @@ provider "aws" {
   region = var.aws_region
 }
 
-variable "aws_region" {
-  description = "Región de AWS"
-  type        = string
-  default     = "us-east-1"
-}
-
-variable "environment" {
-  description = "Entorno (ej. staging, prod)"
-  type        = string
-  default     = "staging"
-}
-
 # Red virtual preliminar para el ambiente
 resource "aws_vpc" "main" {
   cidr_block           = "10.0.0.0/16"
