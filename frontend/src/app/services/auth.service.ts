@@ -60,7 +60,6 @@ export class AuthService {
     email: string;
     password: string;
     name?: string;
-    role?: 'USER' | 'ADMIN';
   }): Observable<AuthResponse> {
     return this.http.post<AuthResponse>(`${this.apiUrl}/register`, payload).pipe(
       tap((res) => this.handleAuthSuccess(res)),

@@ -1,4 +1,15 @@
-import { Controller, Post, Body, Get, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Get,
+  UseGuards,
+  HttpCode,
+  HttpStatus,
+  Param,
+  ParseIntPipe,
+  Patch,
+} from '@nestjs/common';
 import { AuthService } from './auth.service.js';
 import { RegisterDto } from './dto/register.dto.js';
 import { LoginDto } from './dto/login.dto.js';
@@ -7,6 +18,7 @@ import { RolesGuard } from './guards/roles.guard.js';
 import { Roles } from './decorators/roles.decorator.js';
 import { CurrentUser } from './decorators/current-user.decorator.js';
 import { Role } from '@prisma/client';
+import { UpdateUserRoleDto } from './dto/update-user-role.dto.js';
 
 @Controller('api/auth')
 export class AuthController {
@@ -37,5 +49,16 @@ export class AuthController {
       message: 'Acceso autorizado exclusivamente para administradores',
       user,
     };
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @Patch('users/:userId/role')
+  updateUserRole(
+    @Param('userId', ParseIntPipe) userId: number,
+    @Body() updateUserRoleDto: UpdateUserRoleDto,
+    @CurrentUser('id') actorId: number,
+  ) {
+    return this.authService.updateUserRole(userId, updateUserRoleDto.role, actorId);
   }
 }

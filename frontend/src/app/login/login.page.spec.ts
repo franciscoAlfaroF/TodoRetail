@@ -44,6 +44,7 @@ describe('LoginPage', () => {
     expect(component).toBeTruthy();
     expect(component.loginForm).toBeDefined();
     expect(component.registerForm).toBeDefined();
+    expect(component.registerForm.contains('role')).toBe(false);
   });
 
   it('should validate email format in loginForm', () => {

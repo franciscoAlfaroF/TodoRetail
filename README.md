@@ -58,13 +58,20 @@ El módulo Python incluye un algoritmo NLP (Natural Language Processing) basado 
 
 ## 14. Instrucciones de Instalación
 1. Clonar el repositorio.
-2. Copiar los archivos `.env.example` a `.env` en los directorios de backend y frontend.
-3. Asegurarse de tener Docker y Docker Compose instalados.
+2. Crear el `.env` de Compose y generar un `JWT_SECRET` aleatorio:
+   ```powershell
+   Copy-Item .env.example .env
+   $jwt = [guid]::NewGuid().ToString('N') + [guid]::NewGuid().ToString('N')
+   Set-Content .env -Value "JWT_SECRET=$jwt" -NoNewline
+   ```
+3. Copiar los `.env.example` de backend y frontend a sus respectivos `.env` si se ejecutan fuera de Docker, y completar sus variables.
+4. Asegurarse de tener Docker y Docker Compose instalados.
 
 ## 15. Configuración de Variables de Entorno
 Revisar el archivo `.env.example` en el backend. Principales variables:
 * `DATABASE_URL`: URI de conexión a PostgreSQL.
 * `PYTHON_SERVICE_URL`: URL interna del servicio de scraping (`http://python-service:8000`).
+* `JWT_SECRET`: secreto aleatorio de al menos 32 caracteres; la API no inicia si falta o es demasiado corto. No reutilizar el valor de CI ni subir secretos al repositorio.
 
 ## 16. Instrucciones de Ejecución
 Ejecutar el siguiente comando en la raíz del proyecto para construir y levantar todos los servicios en contenedores separados:
@@ -81,6 +88,12 @@ docker compose up --build -d
 * **Backend**: `cd backend && npm run test`
 * **Python**: `cd python-service && pytest`
 * El CI/CD en GitHub Actions ejecuta estas pruebas automáticamente.
+
+## 18.1 Autenticación y administración de roles
+* El registro público siempre crea cuentas `USER`; enviar `role: "ADMIN"` en el registro no otorga privilegios.
+* Un administrador autenticado puede asignar o quitar el rol de otra cuenta mediante `PATCH /api/auth/users/{userId}/role` con el cuerpo `{"role":"ADMIN"}` o `{"role":"USER"}`. La ruta requiere JWT y rol `ADMIN`.
+* No se permite cambiar el propio rol ni quitar el rol al último administrador. El backend consulta el rol vigente en PostgreSQL en cada petición.
+* Para crear el primer administrador, registra primero la cuenta y ejecuta el comando sólo cuando aún no exista ningún administrador. En el Compose de desarrollo: `docker compose exec backend npm run admin:promote -- usuario@ejemplo.com`. En el staging local: `docker compose --env-file .env.staging -f docker-compose.staging.yml exec backend npm run admin:promote -- usuario@ejemplo.com`. El bootstrap requiere acceso autorizado al entorno y a su base de datos; una vez creado el primer admin, la promoción se hace únicamente por la ruta protegida.
 
 ## 19. Proceso de Construcción con Docker y Despliegue
 * Cada componente posee su propio `Dockerfile` (el frontend y backend utilizan construcciones *multi-stage* para optimizar el peso).

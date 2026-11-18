@@ -61,6 +61,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DATABASE_URL: postgresql://todoretail:ci-password@localhost:5432/todoretail_test
+      JWT_SECRET: ci-only-jwt-secret-for-automated-tests-32chars-min
     services:
       postgres:
         image: postgres:15-alpine
@@ -155,6 +156,8 @@ jobs:
   compose-validation:
     name: Docker Compose validation
     runs-on: ubuntu-latest
+    env:
+      JWT_SECRET: ci-only-jwt-secret-for-compose-validation-32chars
     steps:
       - uses: actions/checkout@v4
 
