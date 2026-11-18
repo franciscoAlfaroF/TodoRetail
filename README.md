@@ -85,10 +85,22 @@ docker compose up --build -d
 ## 19. Proceso de Construcción con Docker y Despliegue
 * Cada componente posee su propio `Dockerfile` (el frontend y backend utilizan construcciones *multi-stage* para optimizar el peso).
 * GitHub Actions valida linting, pruebas unitarias y E2E, builds de producción, auditoría de dependencias, detección de secretos, configuración de Docker Compose y formato/validación de Terraform. También construye las imágenes y bloquea esa etapa si Trivy detecta vulnerabilidades críticas o altas.
-* El workflow no despliega a Staging: ese paso queda pendiente hasta configurar un destino real y sus credenciales. No se considera exitoso un despliegue simulado.
+* El workflow de CI no despliega a un proveedor público: no hay cuenta cloud ni credenciales configuradas. No se considera exitoso un despliegue simulado.
+* Para preparar un staging local aislado en Docker Desktop, genera un `.env.staging` local con secretos aleatorios y ejecuta:
+  ```powershell
+  Copy-Item .env.staging.example .env.staging
+  $db = [guid]::NewGuid().ToString('N') + [guid]::NewGuid().ToString('N')
+  $jwt = [guid]::NewGuid().ToString('N') + [guid]::NewGuid().ToString('N')
+  $envFile = (Get-Content .env.staging -Raw).Replace('replace-with-a-random-hex-secret', $db).Replace('replace-with-a-different-random-hex-secret', $jwt)
+  Set-Content .env.staging -Value $envFile -NoNewline
+  docker compose --env-file .env.staging -f docker-compose.staging.yml up --build -d
+  ```
+* La interfaz estará en `http://localhost:8180` y la comprobación de API en `http://localhost:8180/api/health`. PostgreSQL, NestJS y FastAPI no publican puertos al host; el frontend proxifica `/api` al backend.
+* Este staging es local y no es accesible desde Internet. Los contenedores y el volumen de base de datos están separados del Compose de desarrollo. Para detenerlo sin borrar los datos: `docker compose --env-file .env.staging -f docker-compose.staging.yml down`.
 
 ## 20. Enlaces y Documentación Adicional
-* **Enlace al ambiente de Staging**: [EN CONSTRUCCIÓN]
+* **Staging local**: `http://localhost:8180` (disponible sólo mientras Docker Desktop lo ejecuta en el equipo local).
+* **Staging público**: pendiente de seleccionar/provisionar un proveedor cloud y configurar credenciales fuera del repositorio.
 * **Enlace al prototipo Figma**: [EN CONSTRUCCIÓN]
 * **Documentación de la API**: [EN CONSTRUCCIÓN]
 * **Limitaciones**: La búsqueda depende de la latencia y disponibilidad de los sitios web externos, ya que opera en tiempo real.

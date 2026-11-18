@@ -1,8 +1,9 @@
 # Stage 1: Build
 FROM node:22-alpine AS builder
 WORKDIR /app
+RUN npm install --global npm@11.20.0
 COPY package*.json ./
-RUN npm install
+RUN npm ci
 COPY . .
 RUN npm run build -- --configuration=production
 

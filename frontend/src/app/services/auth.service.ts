@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable, tap } from 'rxjs';
 import { Router } from '@angular/router';
+import { environment } from '../../environments/environment';
 
 export interface User {
   id: number;
@@ -21,7 +22,7 @@ export interface AuthResponse {
   providedIn: 'root',
 })
 export class AuthService {
-  private apiUrl = 'http://localhost:3000/api/auth';
+  private apiUrl = `${environment.apiUrl}/auth`;
   private readonly TOKEN_KEY = 'todoretail_token';
   private readonly USER_KEY = 'todoretail_user';
 

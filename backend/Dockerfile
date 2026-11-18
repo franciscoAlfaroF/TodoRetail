@@ -2,8 +2,9 @@
 FROM node:22-alpine AS builder
 WORKDIR /app
 RUN apk add --no-cache openssl
+RUN npm install --global npm@11.20.0
 COPY package*.json ./
-RUN npm install
+RUN npm ci
 COPY . .
 RUN npx prisma@5 generate
 RUN npm run build

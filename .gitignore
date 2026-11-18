@@ -2,6 +2,7 @@ node_modules/
 dist/
 www/
 .env
+.env.staging
 *.pem
 .terraform/
 *.tfstate

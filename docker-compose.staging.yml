@@ -1,0 +1,89 @@
+name: todoretail-staging
+
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in .env.staging}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env.staging}
+      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB in .env.staging}
+    volumes:
+      - staging_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - staging
+    restart: unless-stopped
+
+  python-service:
+    build:
+      context: ./python-service
+    environment:
+      ENVIRONMENT: staging
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    networks:
+      - staging
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:?Set POSTGRES_USER in .env.staging}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env.staging}@db:5432/${POSTGRES_DB:?Set POSTGRES_DB in .env.staging}
+      PYTHON_SERVICE_URL: http://python-service:8000
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env.staging}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-24h}
+      CORS_ORIGIN: http://localhost:8180
+    depends_on:
+      db:
+        condition: service_healthy
+      python-service:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      - staging
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "127.0.0.1:8180:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - staging
+    restart: unless-stopped
+
+volumes:
+  staging_postgres_data:
+
+networks:
+  staging:
