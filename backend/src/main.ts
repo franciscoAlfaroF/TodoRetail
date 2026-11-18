@@ -1,9 +1,11 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module.js';
 import { ValidationPipe } from '@nestjs/common';
+import { requestLoggingMiddleware } from './request-logging.middleware.js';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  app.use(requestLoggingMiddleware);
   app.enableCors({
     origin: process.env.CORS_ORIGIN?.split(',') ?? true,
   });

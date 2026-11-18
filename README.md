@@ -110,6 +110,11 @@ docker compose up --build -d
   ```
 * La interfaz estará en `http://localhost:8180` y la comprobación de API en `http://localhost:8180/api/health`. PostgreSQL, NestJS y FastAPI no publican puertos al host; el frontend proxifica `/api` al backend.
 * Este staging es local y no es accesible desde Internet. Los contenedores y el volumen de base de datos están separados del Compose de desarrollo. Para detenerlo sin borrar los datos: `docker compose --env-file .env.staging -f docker-compose.staging.yml down`.
+* **Observabilidad local**: NestJS y FastAPI escriben logs JSON a stdout con identificador de solicitud, ruta, código HTTP y duración. NestJS propaga `x-request-id` a FastAPI; `/api/health` comprueba PostgreSQL y FastAPI y responde `503` si alguna dependencia falla. Docker limita cada log a tres archivos de 10 MB.
+  ```powershell
+  docker compose --env-file .env.staging -f docker-compose.staging.yml logs -f backend python-service
+  ```
+  Busca el mismo `requestId` en ambos servicios para seguir una búsqueda. Los logs omiten el término consultado, tokens y contraseñas.
 
 ## 20. Enlaces y Documentación Adicional
 * **Staging local**: `http://localhost:8180` (disponible sólo mientras Docker Desktop lo ejecuta en el equipo local).

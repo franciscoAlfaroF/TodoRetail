@@ -1,6 +1,5 @@
 from playwright.sync_api import sync_playwright
 from typing import List, Dict
-import re
 
 def search_santa_isabel(query: str) -> List[Dict]:
     results = []
@@ -63,9 +62,6 @@ def search_santa_isabel(query: str) -> List[Dict]:
                 
                 if len(results) >= 50:
                     break
-                    
-        except Exception as e:
-            print(f"Error scraping Santa Isabel: {e}")
         finally:
             browser.close()
             

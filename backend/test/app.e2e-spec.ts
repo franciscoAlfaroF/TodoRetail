@@ -3,6 +3,7 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module.js';
+import { requestLoggingMiddleware } from '../src/request-logging.middleware.js';
 
 describe('AppController (e2e)', () => {
   let app: INestApplication<App>;
@@ -13,18 +14,32 @@ describe('AppController (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    app.use(requestLoggingMiddleware);
     await app.init();
   });
 
-  it('/api/health (GET)', () => {
+  it('/api/health (GET) reports dependency health and a request id', () => {
     return request(app.getHttpServer())
       .get('/api/health')
+      .set('x-request-id', 'health-e2e-001')
       .expect(200)
+      .expect('x-request-id', 'health-e2e-001')
       .expect((response) => {
         expect(response.body).toMatchObject({
           status: 'ok',
           service: 'nestjs-backend',
+          checks: { database: 'ok', pythonService: 'ok' },
         });
+      });
+  });
+
+  it('creates a safe request id when the supplied id is invalid', () => {
+    return request(app.getHttpServer())
+      .get('/api/health')
+      .set('x-request-id', 'invalid request id')
+      .expect(200)
+      .expect((response) => {
+        expect(response.headers['x-request-id']).toMatch(/^[0-9a-f-]{36}$/);
       });
   });
 

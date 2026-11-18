@@ -99,9 +99,6 @@ def search_unimarc(query: str) -> List[Dict]:
                 
                 if len(results) >= 50:
                     break
-                    
-        except Exception as e:
-            print(f"Error scraping Unimarc: {e}")
         finally:
             browser.close()
             

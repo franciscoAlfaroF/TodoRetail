@@ -1,5 +1,4 @@
 from playwright.sync_api import sync_playwright
-import json
 from typing import List, Dict
 import time
 
@@ -69,9 +68,6 @@ def search_jumbo(query: str) -> List[Dict]:
                 
                 if len(results) >= 50:
                     break
-                    
-        except Exception as e:
-            print(f"Error scraping Jumbo: {e}")
         finally:
             browser.close()
             

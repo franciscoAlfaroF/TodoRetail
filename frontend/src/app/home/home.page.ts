@@ -1,8 +1,8 @@
-import { Component, ChangeDetectorRef } from '@angular/core';
+import { Component, ChangeDetectorRef, OnDestroy } from '@angular/core';
 import { ApiService, ProductResult } from '../services/api.service';
 import { AuthService, User } from '../services/auth.service';
 import { Router } from '@angular/router';
-import { Observable } from 'rxjs';
+import { Observable, Subscription } from 'rxjs';
 import { AlertController } from '@ionic/angular/lazy';
 
 export interface SupermarketPrice {
@@ -26,7 +26,7 @@ export interface GroupedProduct {
   styleUrls: ['home.page.scss'],
   standalone: false,
 })
-export class HomePage {
+export class HomePage implements OnDestroy {
   query: string = '';
   groupedProducts: GroupedProduct[] = [];
   originalGroups: GroupedProduct[] = [];
@@ -36,6 +36,8 @@ export class HomePage {
 
   currentUser$: Observable<User | null>;
   isAuthenticated$: Observable<boolean>;
+  private searchTimer: ReturnType<typeof setTimeout> | undefined;
+  private activeSearch: Subscription | undefined;
 
   constructor(
     private apiService: ApiService,
@@ -80,28 +82,50 @@ export class HomePage {
   }
 
   searchProducts() {
-    if (!this.query.trim()) return;
+    if (this.searchTimer) {
+      clearTimeout(this.searchTimer);
+    }
+    this.activeSearch?.unsubscribe();
+
+    const query = this.query.trim();
+    this.error = null;
+    this.groupedProducts = [];
+    this.originalGroups = [];
+    if (!query) {
+      this.loading = false;
+      this.cdr.detectChanges();
+      return;
+    }
 
     this.loading = true;
-    this.error = null;
     this.cdr.detectChanges();
 
-    this.apiService.extractPrices(this.query).subscribe({
-      next: (res) => {
-        const groups = this.groupProducts(res.results);
-        this.originalGroups = [...groups];
-        this.groupedProducts = groups;
-        this.applySort();
-        this.loading = false;
-        this.cdr.detectChanges();
-      },
-      error: (err) => {
-        this.error = 'Ocurrió un error consultando los precios.';
-        this.loading = false;
-        this.cdr.detectChanges();
-        console.error(err);
-      },
-    });
+    this.searchTimer = setTimeout(() => {
+      this.searchTimer = undefined;
+      this.activeSearch = this.apiService.extractPrices(query).subscribe({
+        next: (res) => {
+          const groups = this.groupProducts(res.results);
+          this.originalGroups = [...groups];
+          this.groupedProducts = groups;
+          this.applySort();
+          this.loading = false;
+          this.cdr.detectChanges();
+        },
+        error: (err) => {
+          this.error = 'Ocurrió un error consultando los precios.';
+          this.loading = false;
+          this.cdr.detectChanges();
+          console.error(err);
+        },
+      });
+    }, 500);
+  }
+
+  ngOnDestroy() {
+    if (this.searchTimer) {
+      clearTimeout(this.searchTimer);
+    }
+    this.activeSearch?.unsubscribe();
   }
 
   groupProducts(results: ProductResult[]): GroupedProduct[] {

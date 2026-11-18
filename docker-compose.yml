@@ -1,6 +1,13 @@
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   db:
     image: postgres:15-alpine
+    logging: *default-logging
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-todoretail}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secret}
@@ -18,6 +25,7 @@ services:
   python-service:
     build:
       context: ./python-service
+    logging: *default-logging
     ports:
       - "8000:8000"
     environment:
@@ -26,6 +34,7 @@ services:
   backend:
     build:
       context: ./backend
+    logging: *default-logging
     ports:
       - "3000:3000"
     environment:
@@ -41,6 +50,7 @@ services:
   frontend:
     build:
       context: ./frontend
+    logging: *default-logging
     ports:
       - "8100:80"
     depends_on:
