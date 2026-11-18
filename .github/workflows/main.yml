@@ -44,6 +44,14 @@ jobs:
         working-directory: frontend
         run: npm run build -- --configuration production
 
+      - name: Verify PWA production artifacts
+        working-directory: frontend
+        run: |
+          test -f www/manifest.webmanifest
+          test -f www/ngsw.json
+          test -f www/ngsw-worker.js
+          node --input-type=module -e "import fs from 'node:fs'; const manifest = JSON.parse(fs.readFileSync('www/manifest.webmanifest', 'utf8')); if (manifest.name !== 'TodoRetail - Comparador de precios' || manifest.display !== 'standalone' || manifest.start_url !== '/') throw new Error('Invalid TodoRetail PWA manifest'); for (const icon of manifest.icons) { if (!fs.existsSync('www/' + icon.src)) throw new Error('Missing PWA icon: ' + icon.src); }"
+
       - name: Audit dependencies
         working-directory: frontend
         run: npm audit --audit-level=high

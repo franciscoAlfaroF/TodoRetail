@@ -101,6 +101,7 @@ docker compose up --build -d
 ## 20. Enlaces y Documentación Adicional
 * **Staging local**: `http://localhost:8180` (disponible sólo mientras Docker Desktop lo ejecuta en el equipo local).
 * **Staging público**: pendiente de seleccionar/provisionar un proveedor cloud y configurar credenciales fuera del repositorio.
+* **PWA**: en staging se puede instalar TodoRetail desde la opción de instalación del navegador. La app shell y recursos estáticos se guardan para abrir la aplicación sin conexión después de la primera carga; búsqueda, autenticación y datos requieren conexión con las APIs.
 * **Enlace al prototipo Figma**: [EN CONSTRUCCIÓN]
 * **Documentación de la API**: [EN CONSTRUCCIÓN]
 * **Limitaciones**: La búsqueda depende de la latencia y disponibilidad de los sitios web externos, ya que opera en tiempo real.
