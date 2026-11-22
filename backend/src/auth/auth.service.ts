@@ -106,6 +106,59 @@ export class AuthService {
     return user;
   }
 
+  async exportAccount(userId: number) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('Usuario no encontrado');
+    }
+
+    return {
+      exportedAt: new Date().toISOString(),
+      account: user,
+    };
+  }
+
+  async deleteAccount(userId: number) {
+    return this.prisma.$transaction(async (transaction) => {
+      const user = await transaction.user.findUnique({
+        where: { id: userId },
+        select: { id: true, role: true },
+      });
+
+      if (!user) {
+        throw new UnauthorizedException('Usuario no encontrado');
+      }
+
+      if (user.role === Role.ADMIN) {
+        const adminCount = await transaction.user.count({
+          where: { role: Role.ADMIN },
+        });
+
+        if (adminCount <= 1) {
+          throw new ConflictException(
+            'No se puede eliminar la cuenta del último administrador',
+          );
+        }
+      }
+
+      return transaction.user.delete({
+        where: { id: userId },
+        select: { id: true },
+      });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  }
+
   async updateUserRole(userId: number, role: Role, actorId: number) {
     if (userId === actorId) {
       throw new BadRequestException('No puedes cambiar tu propio rol');

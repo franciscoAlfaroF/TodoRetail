@@ -10,10 +10,10 @@ services:
     logging: *default-logging
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-todoretail}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secret}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the root .env file}
       POSTGRES_DB: ${POSTGRES_DB:-todoretail_db}
     ports:
-      - "5432:5432"
+      - "127.0.0.1:${DB_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -27,7 +27,7 @@ services:
       context: ./python-service
     logging: *default-logging
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     environment:
       - ENVIRONMENT=development
 
@@ -36,11 +36,13 @@ services:
       context: ./backend
     logging: *default-logging
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-todoretail}:${POSTGRES_PASSWORD:-secret}@db:5432/${POSTGRES_DB:-todoretail_db}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-todoretail}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the root .env file}@db:5432/${POSTGRES_DB:-todoretail_db}
       - PYTHON_SERVICE_URL=http://python-service:8000
       - JWT_SECRET=${JWT_SECRET:?Set JWT_SECRET in the root .env file}
+      - CORS_ORIGIN=http://localhost:8100
+      - COOKIE_SECURE=${COOKIE_SECURE:-false}
     depends_on:
       db:
         condition: service_healthy
@@ -52,7 +54,7 @@ services:
       context: ./frontend
     logging: *default-logging
     ports:
-      - "8100:80"
+      - "127.0.0.1:8100:80"
     depends_on:
       - backend
 

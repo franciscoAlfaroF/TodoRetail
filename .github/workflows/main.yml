@@ -158,6 +158,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       JWT_SECRET: ci-only-jwt-secret-for-compose-validation-32chars
+      POSTGRES_PASSWORD: ci-only-compose-db-password
     steps:
       - uses: actions/checkout@v4
 

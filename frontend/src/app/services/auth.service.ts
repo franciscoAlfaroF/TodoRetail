@@ -15,7 +15,11 @@ export interface User {
 export interface AuthResponse {
   message: string;
   user: User;
-  accessToken: string;
+}
+
+export interface AccountExport {
+  exportedAt: string;
+  account: User & { updatedAt: string };
 }
 
 @Injectable({
@@ -23,37 +27,26 @@ export interface AuthResponse {
 })
 export class AuthService {
   private apiUrl = `${environment.apiUrl}/auth`;
-  private readonly TOKEN_KEY = 'todoretail_token';
-  private readonly USER_KEY = 'todoretail_user';
+  private readonly LEGACY_TOKEN_KEY = 'todoretail_token';
 
-  private currentUserSubject = new BehaviorSubject<User | null>(this.getStoredUser());
+  private currentUserSubject = new BehaviorSubject<User | null>(null);
   public currentUser$ = this.currentUserSubject.asObservable();
 
-  private isAuthenticatedSubject = new BehaviorSubject<boolean>(!!this.getToken());
+  private isAuthenticatedSubject = new BehaviorSubject<boolean>(false);
   public isAuthenticated$ = this.isAuthenticatedSubject.asObservable();
 
-  constructor(private http: HttpClient, private router: Router) {}
+  constructor(private http: HttpClient, private router: Router) {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem(this.LEGACY_TOKEN_KEY);
+    }
+  }
 
   public get currentUserValue(): User | null {
     return this.currentUserSubject.value;
   }
 
   public get isAuthenticated(): boolean {
-    return !!this.getToken();
-  }
-
-  public getToken(): string | null {
-    return localStorage.getItem(this.TOKEN_KEY);
-  }
-
-  private getStoredUser(): User | null {
-    const raw = localStorage.getItem(this.USER_KEY);
-    if (!raw) return null;
-    try {
-      return JSON.parse(raw);
-    } catch {
-      return null;
-    }
+    return !!this.currentUserSubject.value;
   }
 
   register(payload: {
@@ -75,30 +68,51 @@ export class AuthService {
   getProfile(): Observable<User> {
     return this.http.get<User>(`${this.apiUrl}/profile`).pipe(
       tap((user) => {
-        localStorage.setItem(this.USER_KEY, JSON.stringify(user));
         this.currentUserSubject.next(user);
+        this.isAuthenticatedSubject.next(true);
       }),
     );
+  }
+
+  restoreSession(): void {
+    this.getProfile().subscribe({
+      error: (error: { status?: number }) => {
+        if (error.status !== 401) {
+          console.error(`Session restoration failed with HTTP ${error.status ?? 'unknown'}.`);
+        }
+      },
+    });
   }
 
   getAdminData(): Observable<{ message: string; user: any }> {
     return this.http.get<{ message: string; user: any }>(`${this.apiUrl}/admin`);
   }
 
+  exportAccount(): Observable<AccountExport> {
+    return this.http.get<AccountExport>(`${this.apiUrl}/account/export`);
+  }
+
+  deleteAccount(): Observable<{ id: number }> {
+    return this.http.delete<{ id: number }>(`${this.apiUrl}/account`).pipe(
+      tap(() => this.clearLocalSession()),
+    );
+  }
+
   logout(): void {
-    localStorage.removeItem(this.TOKEN_KEY);
-    localStorage.removeItem(this.USER_KEY);
-    this.currentUserSubject.next(null);
-    this.isAuthenticatedSubject.next(false);
+    this.clearLocalSession();
+    this.http.post<void>(`${this.apiUrl}/logout`, {}).subscribe({
+      error: () => console.warn('Logout request failed; the server session will expire.'),
+    });
     this.router.navigate(['/login']);
   }
 
+  clearLocalSession(): void {
+    this.currentUserSubject.next(null);
+    this.isAuthenticatedSubject.next(false);
+  }
+
   private handleAuthSuccess(res: AuthResponse): void {
-    if (res.accessToken) {
-      localStorage.setItem(this.TOKEN_KEY, res.accessToken);
-    }
     if (res.user) {
-      localStorage.setItem(this.USER_KEY, JSON.stringify(res.user));
       this.currentUserSubject.next(res.user);
     }
     this.isAuthenticatedSubject.next(true);

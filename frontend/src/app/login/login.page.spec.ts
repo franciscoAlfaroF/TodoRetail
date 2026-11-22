@@ -15,8 +15,8 @@ describe('LoginPage', () => {
 
   const mockAuthService = {
     isAuthenticated: false,
-    login: vi.fn().mockReturnValue(of({ message: 'ok', user: { email: 'a@b.com' }, accessToken: 'tok' })),
-    register: vi.fn().mockReturnValue(of({ message: 'ok', user: { email: 'a@b.com' }, accessToken: 'tok' })),
+    login: vi.fn().mockReturnValue(of({ message: 'ok', user: { email: 'a@b.com' } })),
+    register: vi.fn().mockReturnValue(of({ message: 'ok', user: { email: 'a@b.com' } })),
   };
 
   beforeEach(async () => {

@@ -18,7 +18,16 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     private readonly prisma: PrismaService,
   ) {
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      jwtFromRequest: ExtractJwt.fromExtractors([
+        (request: { headers: { cookie?: string } }) => {
+          const cookie = request.headers.cookie
+            ?.split(';')
+            .map((part) => part.trim())
+            .find((part) => part.startsWith('todoretail_token='));
+          return cookie?.slice('todoretail_token='.length) ?? null;
+        },
+        ExtractJwt.fromAuthHeaderAsBearerToken(),
+      ]),
       ignoreExpiration: false,
       secretOrKey: getJwtSecret(configService),
     });

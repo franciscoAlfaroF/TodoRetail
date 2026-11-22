@@ -19,6 +19,7 @@ describe('AuthService', () => {
     findUnique: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
+    delete: vi.fn(),
     count: vi.fn(),
   };
 
@@ -145,6 +146,44 @@ describe('AuthService', () => {
 
       await expect(service.updateUserRole(2, Role.USER, 1)).rejects.toThrow(ConflictException);
       expect(mockPrisma.user.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('account privacy', () => {
+    it('exports account data without selecting the password hash', async () => {
+      const account = {
+        id: 1,
+        email: 'test@example.com',
+        name: 'Test',
+        role: Role.USER,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      mockPrisma.user.findUnique.mockResolvedValue(account);
+
+      await expect(service.exportAccount(1)).resolves.toMatchObject({ account });
+      expect(mockPrisma.user.findUnique).toHaveBeenCalledWith({
+        where: { id: 1 },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          role: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+    });
+
+    it('deletes an account and prevents deleting the last administrator', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({ id: 2, role: Role.USER });
+      mockPrisma.user.delete.mockResolvedValue({ id: 2 });
+      await expect(service.deleteAccount(2)).resolves.toEqual({ id: 2 });
+
+      mockPrisma.user.findUnique.mockResolvedValue({ id: 1, role: Role.ADMIN });
+      mockPrisma.user.count.mockResolvedValue(1);
+      await expect(service.deleteAccount(1)).rejects.toThrow(ConflictException);
+      expect(mockPrisma.user.delete).toHaveBeenCalledTimes(1);
     });
   });
 

@@ -62,7 +62,8 @@ El módulo Python incluye un algoritmo NLP (Natural Language Processing) basado 
    ```powershell
    Copy-Item .env.example .env
    $jwt = [guid]::NewGuid().ToString('N') + [guid]::NewGuid().ToString('N')
-   Set-Content .env -Value "JWT_SECRET=$jwt" -NoNewline
+   $db = [guid]::NewGuid().ToString('N') + [guid]::NewGuid().ToString('N')
+   Set-Content .env -Value @("JWT_SECRET=$jwt", "POSTGRES_PASSWORD=$db", "COOKIE_SECURE=false")
    ```
 3. Copiar los `.env.example` de backend y frontend a sus respectivos `.env` si se ejecutan fuera de Docker, y completar sus variables.
 4. Asegurarse de tener Docker y Docker Compose instalados.
@@ -72,6 +73,9 @@ Revisar el archivo `.env.example` en el backend. Principales variables:
 * `DATABASE_URL`: URI de conexión a PostgreSQL.
 * `PYTHON_SERVICE_URL`: URL interna del servicio de scraping (`http://python-service:8000`).
 * `JWT_SECRET`: secreto aleatorio de al menos 32 caracteres; la API no inicia si falta o es demasiado corto. No reutilizar el valor de CI ni subir secretos al repositorio.
+* `POSTGRES_PASSWORD`: contraseña aleatoria exclusiva para PostgreSQL local; Compose no tiene una contraseña predeterminada y los puertos de desarrollo sólo se publican en `127.0.0.1`.
+* `COOKIE_SECURE`: debe ser `true` cuando el sitio se publica con HTTPS. En staging local HTTP se deja en `false`; la cookie de autenticación sigue siendo `HttpOnly` y `SameSite=Lax`.
+* `CORS_ORIGIN`: origen u orígenes frontend confiables separados por comas. En un despliegue público se debe reemplazar el origen local por el dominio HTTPS real.
 
 ## 16. Instrucciones de Ejecución
 Ejecutar el siguiente comando en la raíz del proyecto para construir y levantar todos los servicios en contenedores separados:
@@ -91,9 +95,11 @@ docker compose up --build -d
 
 ## 18.1 Autenticación y administración de roles
 * El registro público siempre crea cuentas `USER`; enviar `role: "ADMIN"` en el registro no otorga privilegios.
+* El inicio de sesión usa una cookie `HttpOnly`, `SameSite=Lax`; el JWT no se guarda en `localStorage` ni se devuelve al JavaScript del navegador. Las operaciones que cambian estado con cookie validan el encabezado `Origin`; la API sólo acepta los orígenes frontend explícitamente configurados.
 * Un administrador autenticado puede asignar o quitar el rol de otra cuenta mediante `PATCH /api/auth/users/{userId}/role` con el cuerpo `{"role":"ADMIN"}` o `{"role":"USER"}`. La ruta requiere JWT y rol `ADMIN`.
 * No se permite cambiar el propio rol ni quitar el rol al último administrador. El backend consulta el rol vigente en PostgreSQL en cada petición.
 * Para crear el primer administrador, registra primero la cuenta y ejecuta el comando sólo cuando aún no exista ningún administrador. En el Compose de desarrollo: `docker compose exec backend npm run admin:promote -- usuario@ejemplo.com`. En el staging local: `docker compose --env-file .env.staging -f docker-compose.staging.yml exec backend npm run admin:promote -- usuario@ejemplo.com`. El bootstrap requiere acceso autorizado al entorno y a su base de datos; una vez creado el primer admin, la promoción se hace únicamente por la ruta protegida.
+* En la sección **Privacidad de la cuenta** se puede descargar una exportación JSON del perfil (sin hash de contraseña) o eliminar la cuenta. La eliminación borra inmediatamente el perfil de la base principal; no se permite borrar al último administrador. Los productos extraídos son datos públicos compartidos, no están asociados a una cuenta. No hay respaldos automáticos configurados; si un operador crea respaldos, debe aplicarles su propia retención y eliminación.
 
 ## 19. Proceso de Construcción con Docker y Despliegue
 * Cada componente posee su propio `Dockerfile` (el frontend y backend utilizan construcciones *multi-stage* para optimizar el peso).
@@ -115,6 +121,7 @@ docker compose up --build -d
   docker compose --env-file .env.staging -f docker-compose.staging.yml logs -f backend python-service
   ```
   Busca el mismo `requestId` en ambos servicios para seguir una búsqueda. Los logs omiten el término consultado, tokens y contraseñas.
+* **Cabeceras web**: Nginx aplica una CSP, `X-Content-Type-Options`, `Referrer-Policy`, `X-Frame-Options` y `Permissions-Policy`. HSTS se debe habilitar en el proxy que termine TLS al preparar un despliegue HTTPS público; el staging local opera por HTTP.
 
 ## 20. Enlaces y Documentación Adicional
 * **Staging local**: `http://localhost:8180` (disponible sólo mientras Docker Desktop lo ejecuta en el equipo local).

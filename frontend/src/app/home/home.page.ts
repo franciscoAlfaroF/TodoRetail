@@ -58,6 +58,54 @@ export class HomePage implements OnDestroy {
     this.authService.logout();
   }
 
+  downloadMyData() {
+    this.authService.exportAccount().subscribe({
+      next: (data) => {
+        const file = new Blob([JSON.stringify(data, null, 2)], {
+          type: 'application/json',
+        });
+        const url = URL.createObjectURL(file);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'todoretail-datos-cuenta.json';
+        link.click();
+        window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      },
+      error: () => this.showPrivacyError('No se pudieron exportar los datos de la cuenta.'),
+    });
+  }
+
+  async deleteMyAccount() {
+    const confirmation = await this.alertCtrl.create({
+      header: 'Eliminar cuenta',
+      message: 'Se eliminarán tu cuenta y sus datos personales. Esta acción no se puede deshacer.',
+      buttons: [
+        { text: 'Cancelar', role: 'cancel' },
+        { text: 'Eliminar cuenta', role: 'destructive' },
+      ],
+    });
+    await confirmation.present();
+    const { role } = await confirmation.onDidDismiss();
+    if (role !== 'destructive') return;
+
+    this.authService.deleteAccount().subscribe({
+      next: () => this.router.navigate(['/home']),
+      error: () =>
+        this.showPrivacyError(
+          'No se pudo eliminar la cuenta. Si eres el último administrador, primero asigna otro administrador.',
+        ),
+    });
+  }
+
+  private async showPrivacyError(message: string) {
+    const alert = await this.alertCtrl.create({
+      header: 'No se pudo completar la solicitud',
+      message,
+      buttons: ['OK'],
+    });
+    await alert.present();
+  }
+
   async testAdminAccess() {
     this.authService.getAdminData().subscribe({
       next: async (res) => {
