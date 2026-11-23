@@ -100,6 +100,10 @@ jobs:
         working-directory: backend
         run: npm run test
 
+      - name: Initialize test database schema
+        working-directory: backend
+        run: npx prisma db push
+
       - name: End-to-end tests
         working-directory: backend
         env:
