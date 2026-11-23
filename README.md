@@ -4,13 +4,13 @@
 **TodoRetail**: Plataforma inteligente de comparación de precios de supermercados.
 
 ## 2. Descripción Breve
-TodoRetail automatiza la búsqueda y comparación de precios en tiempo real entre múltiples supermercados (Jumbo, Santa Isabel y Unimarc, se busca ampliar el scraping), agrupando productos idénticos para permitirle a los usuarios tomar decisiones de compra informadas y optimizar su presupuesto.
+TodoRetail automatiza la búsqueda y comparación de precios en tiempo real entre múltiples supermercados (Jumbo, Santa Isabel y Unimarc, se busca ampliar el scraping), intentando agrupar productos equivalentes para permitirle a los usuarios tomar decisiones de compra informadas y optimizar su presupuesto.
 
 ## 3. Identificación de los Integrantes
 * Francisco Alfaro Flores
 
 ## 4. Distribución de Responsabilidades
-* Francisco Alfaro Flores: DevOps, Infraestructura (Terraform, Docker), Arquitectura Backend (NestJS, FastAPI) y algoritmos de agrupación NLP. Desarrollo Frontend (Angular, Ionic) y UI/UX. Integración de Datos (Web Scraping en Python), testing y QA.
+* Francisco Alfaro Flores: DevOps, Infraestructura (Terraform, Docker), Arquitectura Backend (NestJS, FastAPI) y algoritmos de agrupación por similitud de texto. Desarrollo Frontend (Angular, Ionic) y UI/UX. Integración de Datos (Web Scraping en Python), testing y QA.
 
 ## 5. Problema o Necesidad Abordada
 Las personas gastan tiempo y dinero intentando encontrar los mejores precios para sus compras de supermercado, visitando múltiples sitios web o locales físicos. La inflación y la variación diaria de precios dificultan saber dónde conviene comprar.
@@ -25,13 +25,13 @@ Familias, estudiantes, dueños de casa y cualquier persona interesada en optimiz
 * Proveer una experiencia móvil y web de alta calidad.
 
 ## 8. Alcance y Exclusiones
-* **Incluye**: Búsqueda en tiempo real en Jumbo, Santa Isabel y Unimarc. Agrupación por nombre, marca, volumen y sabor. Identificación de ofertas.
+* **Incluye**: Búsqueda en tiempo real en Jumbo, Santa Isabel y Unimarc. Agrupación aproximada por similitud de nombres y variantes detectadas. Identificación de ofertas.
 * **Excluye**: Compra directa desde la plataforma (carrito de compras nativo), integración con pasarelas de pago, cálculo de costos de envío.
 
 ## 9. Principales Funcionalidades
 * Barra de búsqueda unificada.
 * Despliegue de resultados agrupados mediante interfaz de acordeón.
-* Visualización del precio más bajo garantizado.
+* Visualización del menor precio encontrado entre los resultados recibidos de los supermercados consultados.
 * Redirección directa al supermercado para concretar la compra.
 * Pantalla de inicio con productos de las secciones oficiales de más vendidos de Jumbo, Santa Isabel y Unimarc. Un worker los consulta en segundo plano y los mantiene en una caché PostgreSQL compartida, refrescada cada 12 horas; la página inicial lee esa caché y no ejecuta scraping al abrirse. Si una tienda falla, se conservan sus últimos productos válidos.
 
@@ -76,21 +76,20 @@ Estos números son una evaluación controlada sobre un conjunto pequeño y const
    $db = [guid]::NewGuid().ToString('N') + [guid]::NewGuid().ToString('N')
    Set-Content .env -Value @("JWT_SECRET=$jwt", "POSTGRES_PASSWORD=$db", "COOKIE_SECURE=false")
    ```
-3. Copiar los `.env.example` de backend y frontend a sus respectivos `.env` si se ejecutan fuera de Docker, y completar sus variables.
-4. Asegurarse de tener Docker y Docker Compose instalados.
+3. Para el Compose de desarrollo no copies archivos `.env` de `backend/` o `frontend/`: Compose sólo lee el `.env` de la raíz y el frontend no tiene un `.env.example`. La configuración para ejecutar el backend fuera de Docker está descrita en `backend/README.md`.
+4. Asegurarse de tener Docker Desktop con Docker Compose instalado.
 
 ## 15. Configuración de Variables de Entorno
-Revisar el archivo `.env.example` en el backend. Principales variables:
-* `DATABASE_URL`: URI de conexión a PostgreSQL.
-* `PYTHON_SERVICE_URL`: URL interna del servicio de scraping (`http://python-service:8000`).
+Para Docker Compose, revisar el archivo `.env.example` de la raíz. Principales variables:
 * `JWT_SECRET`: secreto aleatorio de al menos 32 caracteres; la API no inicia si falta o es demasiado corto. No reutilizar el valor de CI ni subir secretos al repositorio.
 * `POSTGRES_PASSWORD`: contraseña aleatoria exclusiva para PostgreSQL local; Compose no tiene una contraseña predeterminada y los puertos de desarrollo sólo se publican en `127.0.0.1`.
 * `COOKIE_SECURE`: debe ser `true` cuando el sitio se publica con HTTPS. En staging local HTTP se deja en `false`; la cookie de autenticación sigue siendo `HttpOnly` y `SameSite=Lax`.
-* `CORS_ORIGIN`: origen u orígenes frontend confiables separados por comas. En un despliegue público se debe reemplazar el origen local por el dominio HTTPS real.
+
+Compose construye `DATABASE_URL`, `PYTHON_SERVICE_URL` y `CORS_ORIGIN` para los contenedores; no es necesario agregarlos al `.env` de la raíz. En un despliegue público se debe configurar el origen frontend con el dominio HTTPS real.
 
 ## 16. Instrucciones de Ejecución
 Ejecutar el siguiente comando en la raíz del proyecto para construir y levantar todos los servicios en contenedores separados:
-```bash
+```powershell
 docker compose up --build -d
 ```
 
@@ -100,16 +99,35 @@ docker compose up --build -d
 * **Python API**: Disponible en `http://localhost:8000`.
 
 ## 18. Ejecución de Pruebas
-* **Backend**: `cd backend && npm run test`
-* **Python**: `cd python-service && pytest`
-* El CI/CD en GitHub Actions ejecuta estas pruebas automáticamente.
+Para reproducir localmente las versiones usadas por CI, se requiere Node.js 22 y Python 3.11. Ejecuta los comandos desde la raíz en PowerShell:
+
+```powershell
+Push-Location frontend
+npm ci
+npm test -- --watch=false
+Pop-Location
+
+Push-Location backend
+npm ci
+npx prisma generate
+npm run test
+Pop-Location
+
+Push-Location python-service
+py -3.11 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt pytest
+.\.venv\Scripts\python.exe -m pytest tests
+Pop-Location
+```
+
+GitHub Actions corre las validaciones al hacer push a `main`, al abrir o actualizar un pull request hacia `main`, o manualmente desde Actions. El job de backend también ejecuta pruebas E2E con PostgreSQL.
 
 ## 18.1 Autenticación y administración de roles
 * El registro público siempre crea cuentas `USER`; enviar `role: "ADMIN"` en el registro no otorga privilegios.
 * El inicio de sesión usa una cookie `HttpOnly`, `SameSite=Lax`; el JWT no se guarda en `localStorage` ni se devuelve al JavaScript del navegador. Las operaciones que cambian estado con cookie validan el encabezado `Origin`; la API sólo acepta los orígenes frontend explícitamente configurados.
 * Un administrador autenticado puede asignar o quitar el rol de otra cuenta mediante `PATCH /api/auth/users/{userId}/role` con el cuerpo `{"role":"ADMIN"}` o `{"role":"USER"}`. La ruta requiere JWT y rol `ADMIN`.
 * No se permite cambiar el propio rol ni quitar el rol al último administrador. El backend consulta el rol vigente en PostgreSQL en cada petición.
-* Para crear el primer administrador, registra primero la cuenta y ejecuta el comando sólo cuando aún no exista ningún administrador. En el Compose de desarrollo: `docker compose exec backend npm run admin:promote -- usuario@ejemplo.com`. En el staging local: `docker compose --env-file .env.staging -f docker-compose.staging.yml exec backend npm run admin:promote -- usuario@ejemplo.com`. El bootstrap requiere acceso autorizado al entorno y a su base de datos; una vez creado el primer admin, la promoción se hace únicamente por la ruta protegida.
+* Para crear el primer administrador, registra primero la cuenta y ejecuta el comando sólo cuando aún no exista ningún administrador. En el Compose de desarrollo: `docker compose exec backend node scripts/promote-admin.mjs usuario@ejemplo.com`. En el staging local: `docker compose --env-file .env.staging -f docker-compose.staging.yml exec backend node scripts/promote-admin.mjs usuario@ejemplo.com`. El bootstrap requiere acceso autorizado al entorno y a su base de datos; una vez creado el primer admin, la promoción se hace únicamente por la ruta protegida.
 * En la sección **Privacidad de la cuenta** se puede descargar una exportación JSON del perfil y de los productos guardados (sin hash de contraseña) o eliminar la cuenta. La eliminación borra inmediatamente el perfil y su lista personal; no se permite borrar al último administrador. Los resultados extraídos son datos públicos compartidos, mientras que la lista guardada sí está asociada a la cuenta. No hay respaldos automáticos configurados; si un operador crea respaldos, debe aplicarles su propia retención y eliminación.
 * Los usuarios autenticados pueden guardar grupos de productos desde los resultados y volver a consultarlos en **Mis productos guardados**. La lista se almacena por cuenta, se incluye en la exportación de datos y se elimina junto con la cuenta. Al reabrir un guardado se ejecuta una búsqueda nueva; esta función no conserva historial de precios ni envía alertas automáticas. Los visitantes pueden buscar y comparar sin iniciar sesión, pero no guardar productos.
 * API de productos guardados: `GET /api/saved-products`, `POST /api/saved-products` con `{"name":"..."}` y `DELETE /api/saved-products/{id}`. Todas las rutas requieren la cookie de sesión autenticada y cada usuario sólo puede consultar o eliminar sus propios registros.
@@ -139,9 +157,19 @@ docker compose up --build -d
 ## 20. Enlaces y Documentación Adicional
 * **Staging local**: `http://localhost:8180` (disponible sólo mientras Docker Desktop lo ejecuta en el equipo local).
 * **Staging público**: pendiente de seleccionar/provisionar un proveedor cloud y configurar credenciales fuera del repositorio.
-* **PWA**: en staging se puede instalar TodoRetail desde la opción de instalación del navegador. La app shell y recursos estáticos se guardan para abrir la aplicación sin conexión después de la primera carga; búsqueda, autenticación y datos requieren conexión con las APIs.
-* **Android/Capacitor (prueba local)**: la plataforma Android real se encuentra en `frontend/android/`, con identificador `cl.todoretail.app` y nombre `TodoRetail`. El APK local usa el esquema HTTP para coincidir con el backend local. Para probarla, inicia `docker compose up -d`, arranca un emulador desde Android Studio y ejecuta `adb reverse tcp:3000 tcp:3000`. El reverse conecta el `localhost:3000` del emulador con NestJS, manteniendo el origen local requerido por CORS y las cookies. Para regenerar/sincronizar la app usa `cd frontend` y `npm run android:sync`; para compilar el APK debug ejecuta `cd android` y `.\gradlew.bat assembleDebug` (JDK 21 requerido). El APK queda en `frontend/android/app/build/outputs/apk/debug/app-debug.apk`; se puede instalar con `adb install -r android/app/build/outputs/apk/debug/app-debug.apk`. Para una versión distribuible, se debe usar un backend HTTPS y configurar CORS/cookies seguros; este esquema HTTP es sólo para desarrollo local.
-* **Enlace al prototipo Figma**: [EN CONSTRUCCIÓN]
-* **Documentación de la API**: [EN CONSTRUCCIÓN]
+* **PWA**: en staging se puede instalar TodoRetail desde la opción de instalación del navegador. Una vez instalado el Service Worker y completada la primera carga, la app shell y los recursos estáticos se guardan para abrir la aplicación sin conexión; búsqueda, autenticación y datos requieren conexión con las APIs.
+* **Android/Capacitor (prueba local)**: la plataforma Android real se encuentra en `frontend/android/`, con identificador `cl.todoretail.app` y nombre `TodoRetail`. Se requiere Android Studio con SDK y Platform-Tools (`adb` disponible en `PATH`), un emulador o dispositivo conectado y JDK 21. El proyecto fija Java 21; un build con JDK 17 falla con `invalid source release: 21`. El APK local usa el esquema HTTP para coincidir con el backend local. Desde la raíz, inicia `docker compose up -d`, abre un emulador y ejecuta:
+  ```powershell
+  Push-Location frontend
+  npm run android:sync
+  Push-Location android
+  .\gradlew.bat assembleDebug
+  Pop-Location
+  adb devices
+  adb reverse tcp:3000 tcp:3000
+  adb install -r android/app/build/outputs/apk/debug/app-debug.apk
+  Pop-Location
+  ```
+  El reverse conecta el `localhost:3000` del emulador con NestJS, manteniendo el origen local requerido por CORS y las cookies. Para una versión distribuible, se debe usar un backend HTTPS y configurar CORS/cookies seguros; este esquema HTTP es sólo para desarrollo local.
 * **Limitaciones**: La búsqueda por término depende de la latencia y disponibilidad de los sitios web externos, ya que opera en tiempo real. La selección de inicio proviene de secciones públicas que pueden cambiar o quedar temporalmente indisponibles; cuando eso ocurre, se muestran los últimos datos válidos disponibles.
 * **Trabajo Futuro**: Agregar más supermercados, mejorar filtros específicos por producto, continuar mejoras de UI/UX, desarrollar recomendaciones y evaluar caché para las búsquedas en tiempo real.
