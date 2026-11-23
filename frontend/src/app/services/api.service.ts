@@ -16,6 +16,12 @@ export interface ExtractResponse {
   results: ProductResult[];
 }
 
+export interface SavedProduct {
+  id: number;
+  name: string;
+  createdAt: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -26,5 +32,17 @@ export class ApiService {
 
   extractPrices(query: string): Observable<ExtractResponse> {
     return this.http.post<ExtractResponse>(`${this.apiUrl}/extract`, { query });
+  }
+
+  getSavedProducts(): Observable<SavedProduct[]> {
+    return this.http.get<SavedProduct[]>(`${this.apiUrl}/saved-products`);
+  }
+
+  saveProduct(name: string): Observable<SavedProduct> {
+    return this.http.post<SavedProduct>(`${this.apiUrl}/saved-products`, { name });
+  }
+
+  removeSavedProduct(id: number): Observable<{ deleted: boolean }> {
+    return this.http.delete<{ deleted: boolean }>(`${this.apiUrl}/saved-products/${id}`);
   }
 }

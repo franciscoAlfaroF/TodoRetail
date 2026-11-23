@@ -158,6 +158,7 @@ describe('AuthService', () => {
         role: Role.USER,
         createdAt: new Date(),
         updatedAt: new Date(),
+        savedProducts: [],
       };
       mockPrisma.user.findUnique.mockResolvedValue(account);
 
@@ -171,6 +172,10 @@ describe('AuthService', () => {
           role: true,
           createdAt: true,
           updatedAt: true,
+          savedProducts: {
+            select: { name: true, createdAt: true },
+            orderBy: { createdAt: 'asc' },
+          },
         },
       });
     });

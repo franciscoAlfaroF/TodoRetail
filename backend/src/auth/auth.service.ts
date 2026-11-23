@@ -116,6 +116,13 @@ export class AuthService {
         role: true,
         createdAt: true,
         updatedAt: true,
+        savedProducts: {
+          select: {
+            name: true,
+            createdAt: true,
+          },
+          orderBy: { createdAt: 'asc' },
+        },
       },
     });
 

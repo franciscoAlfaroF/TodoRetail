@@ -1,8 +1,8 @@
-import { Component, ChangeDetectorRef, OnDestroy } from '@angular/core';
-import { ApiService, ProductResult } from '../services/api.service';
+import { Component, ChangeDetectorRef, OnDestroy, OnInit } from '@angular/core';
+import { ApiService, ProductResult, SavedProduct } from '../services/api.service';
 import { AuthService, User } from '../services/auth.service';
 import { Router } from '@angular/router';
-import { Observable, Subscription } from 'rxjs';
+import { distinctUntilChanged, Observable, of, Subscription, switchMap } from 'rxjs';
 import { AlertController } from '@ionic/angular/lazy';
 
 export interface SupermarketPrice {
@@ -26,18 +26,23 @@ export interface GroupedProduct {
   styleUrls: ['home.page.scss'],
   standalone: false,
 })
-export class HomePage implements OnDestroy {
+export class HomePage implements OnInit, OnDestroy {
   query: string = '';
   groupedProducts: GroupedProduct[] = [];
   originalGroups: GroupedProduct[] = [];
   loading: boolean = false;
   error: string | null = null;
+  savedProductNotFound: boolean = false;
+  savedProducts: SavedProduct[] = [];
+  savedProductsError: string | null = null;
+  showSavedProducts = false;
   sortOrder: string = 'asc'; // asc, desc, none
 
   currentUser$: Observable<User | null>;
   isAuthenticated$: Observable<boolean>;
   private searchTimer: ReturnType<typeof setTimeout> | undefined;
   private activeSearch: Subscription | undefined;
+  private savedProductsSubscription: Subscription | undefined;
 
   constructor(
     private apiService: ApiService,
@@ -48,6 +53,27 @@ export class HomePage implements OnDestroy {
   ) {
     this.currentUser$ = this.authService.currentUser$;
     this.isAuthenticated$ = this.authService.isAuthenticated$;
+  }
+
+  ngOnInit() {
+    this.savedProductsSubscription = this.isAuthenticated$
+      .pipe(
+        distinctUntilChanged(),
+        switchMap((isAuthenticated) =>
+          isAuthenticated ? this.apiService.getSavedProducts() : of([]),
+        ),
+      )
+      .subscribe({
+        next: (products) => {
+          this.savedProducts = products;
+          this.savedProductsError = null;
+          this.cdr.detectChanges();
+        },
+        error: () => {
+          this.savedProductsError = 'No se pudieron cargar tus productos guardados.';
+          this.cdr.detectChanges();
+        },
+      });
   }
 
   goToLogin() {
@@ -129,7 +155,7 @@ export class HomePage implements OnDestroy {
     });
   }
 
-  searchProducts() {
+  searchProducts(savedProductName?: string) {
     if (this.searchTimer) {
       clearTimeout(this.searchTimer);
     }
@@ -137,6 +163,7 @@ export class HomePage implements OnDestroy {
 
     const query = this.query.trim();
     this.error = null;
+    this.savedProductNotFound = false;
     this.groupedProducts = [];
     this.originalGroups = [];
     if (!query) {
@@ -152,7 +179,16 @@ export class HomePage implements OnDestroy {
       this.searchTimer = undefined;
       this.activeSearch = this.apiService.extractPrices(query).subscribe({
         next: (res) => {
-          const groups = this.groupProducts(res.results);
+          let groups = this.groupProducts(res.results);
+          if (savedProductName) {
+            const savedProductKey = this.createProductKey(savedProductName);
+            groups = groups.filter((group) =>
+              [group.name, ...group.prices.map((price) => price.original_name)].some(
+                (name) => this.createProductKey(name) === savedProductKey,
+              ),
+            );
+            this.savedProductNotFound = groups.length === 0;
+          }
           this.originalGroups = [...groups];
           this.groupedProducts = groups;
           this.applySort();
@@ -174,6 +210,70 @@ export class HomePage implements OnDestroy {
       clearTimeout(this.searchTimer);
     }
     this.activeSearch?.unsubscribe();
+    this.savedProductsSubscription?.unsubscribe();
+  }
+
+  isProductSaved(group: GroupedProduct): boolean {
+    const key = this.createProductKey(group.name);
+    return this.savedProducts.some((product) => this.createProductKey(product.name) === key);
+  }
+
+  saveProduct(group: GroupedProduct) {
+    this.apiService.saveProduct(group.name).subscribe({
+      next: (product) => {
+        this.savedProducts = [
+          product,
+          ...this.savedProducts.filter((saved) => saved.id !== product.id),
+        ];
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.savedProductsError = 'No se pudo guardar el producto. Inténtalo nuevamente.';
+        this.cdr.detectChanges();
+      },
+    });
+  }
+
+  removeSavedProduct(product: SavedProduct) {
+    this.apiService.removeSavedProduct(product.id).subscribe({
+      next: () => {
+        this.savedProducts = this.savedProducts.filter((saved) => saved.id !== product.id);
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.savedProductsError = 'No se pudo quitar el producto guardado.';
+        this.cdr.detectChanges();
+      },
+    });
+  }
+
+  toggleSavedProduct(group: GroupedProduct) {
+    const key = this.createProductKey(group.name);
+    const savedProduct = this.savedProducts.find(
+      (product) => this.createProductKey(product.name) === key,
+    );
+    if (savedProduct) {
+      this.removeSavedProduct(savedProduct);
+    } else {
+      this.saveProduct(group);
+    }
+  }
+
+  searchSavedProduct(product: SavedProduct) {
+    this.showSavedProducts = false;
+    this.query = product.name;
+    this.searchProducts(product.name);
+  }
+
+  private createProductKey(name: string): string {
+    return name
+      .trim()
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^\p{L}\p{N}]+/gu, ' ')
+      .trim()
+      .replace(/\s+/g, ' ');
   }
 
   groupProducts(results: ProductResult[]): GroupedProduct[] {

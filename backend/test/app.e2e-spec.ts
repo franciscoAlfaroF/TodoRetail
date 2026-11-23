@@ -7,6 +7,7 @@ import { of } from 'rxjs';
 import { AppModule } from './../src/app.module.js';
 import { requestLoggingMiddleware } from '../src/request-logging.middleware.js';
 import { csrfOriginMiddleware } from '../src/csrf-origin.middleware.js';
+import { PrismaService } from '../src/prisma.service.js';
 
 const trustedOrigin = process.env.CORS_ORIGIN?.split(',')[0] ?? 'http://localhost:8100';
 
@@ -70,7 +71,10 @@ describe('AppController (e2e)', () => {
     expect(registration.body.user.role).toBe('USER');
     expect(registration.body.accessToken).toBeUndefined();
     expect(registration.headers['set-cookie']).toEqual(
-      expect.arrayContaining([expect.stringContaining('HttpOnly')]),
+      expect.arrayContaining([
+        expect.stringContaining('HttpOnly'),
+        expect.stringContaining('Path=/api'),
+      ]),
     );
 
     await agent
@@ -89,12 +93,56 @@ describe('AppController (e2e)', () => {
     expect(exported.body.account.password).toBeUndefined();
   });
 
-  it('deletes the authenticated account and expires its session cookie', async () => {
+  it('allows an authenticated user to save, list, and remove product groups', async () => {
     const agent = request.agent(app.getHttpServer());
-    const email = `delete-e2e-${Date.now()}-${Math.random().toString(16).slice(2)}@example.com`;
+    const email = `saved-products-${Date.now()}-${Math.random().toString(16).slice(2)}@example.com`;
     await agent
       .post('/api/auth/register')
       .send({ email, password: 'password123' })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .get('/api/saved-products')
+      .expect(401);
+
+    const firstSave = await agent
+      .post('/api/saved-products')
+      .set('Origin', trustedOrigin)
+      .send({ name: 'Leche Entera 1 L' })
+      .expect(201);
+    const duplicateSave = await agent
+      .post('/api/saved-products')
+      .set('Origin', trustedOrigin)
+      .send({ name: 'LECHE entera 1 L' })
+      .expect(201);
+
+    expect(duplicateSave.body.id).toBe(firstSave.body.id);
+    const savedProducts = await agent.get('/api/saved-products').expect(200);
+    expect(savedProducts.body).toHaveLength(1);
+    expect(savedProducts.body[0].name).toBe('Leche Entera 1 L');
+
+    const exported = await agent.get('/api/auth/account/export').expect(200);
+    expect(exported.body.account.savedProducts).toHaveLength(1);
+
+    await agent
+      .delete(`/api/saved-products/${firstSave.body.id}`)
+      .set('Origin', trustedOrigin)
+      .expect(200);
+    await agent.get('/api/saved-products').expect(200, []);
+  });
+
+  it('deletes the authenticated account and expires its session cookie', async () => {
+    const agent = request.agent(app.getHttpServer());
+    const email = `delete-e2e-${Date.now()}-${Math.random().toString(16).slice(2)}@example.com`;
+    const registration = await agent
+      .post('/api/auth/register')
+      .send({ email, password: 'password123' })
+      .expect(201);
+
+    await agent
+      .post('/api/saved-products')
+      .set('Origin', trustedOrigin)
+      .send({ name: 'Yogur natural' })
       .expect(201);
 
     await agent
@@ -113,6 +161,11 @@ describe('AppController (e2e)', () => {
       );
 
     await agent.get('/api/auth/profile').expect(401);
+    await expect(
+      app.get(PrismaService).savedProduct.count({
+        where: { userId: registration.body.user.id },
+      }),
+    ).resolves.toBe(0);
   });
 
   afterEach(async () => {

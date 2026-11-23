@@ -63,8 +63,44 @@
   </ion-card>
 
   <ion-searchbar [(ngModel)]="query" placeholder="Ej. Leche descremada, galletas..." (ionChange)="searchProducts()"></ion-searchbar>
+
+  <ion-button
+    *ngIf="isAuthenticated$ | async"
+    expand="block"
+    fill="outline"
+    (click)="showSavedProducts = !showSavedProducts"
+    [attr.aria-expanded]="showSavedProducts"
+  >
+    <ion-icon name="bookmark-outline" slot="start"></ion-icon>
+    {{ showSavedProducts ? 'Volver a resultados' : 'Mis productos guardados (' + savedProducts.length + ')' }}
+  </ion-button>
+
+  <ion-text color="danger" *ngIf="savedProductsError">
+    <p role="alert" class="ion-text-center">{{ savedProductsError }}</p>
+  </ion-text>
+
+  <ion-card *ngIf="showSavedProducts && (isAuthenticated$ | async)">
+    <ion-card-header>
+      <ion-card-title>Mis productos guardados</ion-card-title>
+      <ion-card-subtitle>Vuelve a buscar para consultar los precios actuales.</ion-card-subtitle>
+    </ion-card-header>
+    <ion-list *ngIf="savedProducts.length > 0; else noSavedProducts">
+      <ion-item *ngFor="let product of savedProducts">
+        <ion-label class="ion-text-wrap">{{ product.name }}</ion-label>
+        <ion-button fill="clear" (click)="searchSavedProduct(product)" [attr.aria-label]="'Buscar precios de ' + product.name">
+          <ion-icon name="search-outline" slot="icon-only"></ion-icon>
+        </ion-button>
+        <ion-button fill="clear" color="danger" (click)="removeSavedProduct(product)" [attr.aria-label]="'Quitar ' + product.name + ' de guardados'">
+          <ion-icon name="bookmark" slot="icon-only"></ion-icon>
+        </ion-button>
+      </ion-item>
+    </ion-list>
+    <ng-template #noSavedProducts>
+      <ion-card-content>Aún no has guardado productos. Inicia sesión y marca un producto de los resultados.</ion-card-content>
+    </ng-template>
+  </ion-card>
   
-  <ion-item *ngIf="groupedProducts.length > 0 || loading" lines="none">
+  <ion-item *ngIf="!showSavedProducts && (groupedProducts.length > 0 || loading)" lines="none">
     <ion-label>Ordenar por precio</ion-label>
     <ion-select [(ngModel)]="sortOrder" (ionChange)="applySort()" interface="popover">
       <ion-select-option value="asc">Menor a mayor</ion-select-option>
@@ -73,16 +109,22 @@
     </ion-select>
   </ion-item>
 
-  <div class="ion-text-center ion-margin-top" *ngIf="loading">
+  <div class="ion-text-center ion-margin-top" *ngIf="!showSavedProducts && loading">
     <ion-spinner></ion-spinner>
     <p>Comparando precios en supermercados...</p>
   </div>
 
-  <ion-text color="danger" *ngIf="error">
-    <p class="ion-text-center">{{ error }}</p>
+  <ion-text color="danger" *ngIf="!showSavedProducts && error">
+    <p role="alert" class="ion-text-center">{{ error }}</p>
   </ion-text>
 
-  <ion-accordion-group *ngIf="!loading && groupedProducts.length > 0" multiple="true">
+  <ion-text color="medium" *ngIf="!showSavedProducts && !loading && savedProductNotFound">
+    <p role="status" class="ion-text-center">
+      No se encontró "{{ query }}" en los resultados actuales de los supermercados.
+    </p>
+  </ion-text>
+
+  <ion-accordion-group *ngIf="!showSavedProducts && !loading && groupedProducts.length > 0" multiple="true">
     <ion-accordion *ngFor="let group of groupedProducts" [value]="group.name">
       <ion-item slot="header" color="light">
         <ion-label>
@@ -92,6 +134,15 @@
       </ion-item>
       
       <div class="ion-padding" slot="content">
+        <ion-button
+          *ngIf="isAuthenticated$ | async"
+          size="small"
+          fill="outline"
+          (click)="toggleSavedProduct(group)"
+        >
+          <ion-icon [name]="isProductSaved(group) ? 'bookmark' : 'bookmark-outline'" slot="start"></ion-icon>
+          {{ isProductSaved(group) ? 'Quitar de guardados' : 'Guardar producto' }}
+        </ion-button>
         <ion-list lines="full">
           <ion-item *ngFor="let p of group.prices">
             <ion-label class="ion-text-wrap">

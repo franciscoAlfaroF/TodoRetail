@@ -118,7 +118,7 @@ export class AuthController {
         this.configService.get<string>('COOKIE_SECURE') === 'true' ||
         this.configService.get<string>('NODE_ENV') === 'production',
       sameSite: 'lax' as const,
-      path: '/api/auth',
+      path: '/api',
     };
   }
 }
