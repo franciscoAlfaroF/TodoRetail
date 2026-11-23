@@ -6,7 +6,9 @@ x-logging: &default-logging
 
 services:
   db:
-    image: postgres:15-alpine
+    build:
+      context: ./database
+    image: todoretail-postgres:15-alpine
     logging: *default-logging
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-todoretail}
@@ -74,7 +76,7 @@ services:
   featured-refresh:
     build:
       context: ./backend
-    command: ["npm", "run", "start:featured-refresh"]
+    command: ["node", "dist/featured-refresh.js"]
     logging: *default-logging
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-todoretail}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the root .env file}@db:5432/${POSTGRES_DB:-todoretail_db}
