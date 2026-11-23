@@ -52,7 +52,7 @@ services:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-todoretail}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the root .env file}@db:5432/${POSTGRES_DB:-todoretail_db}
       - PYTHON_SERVICE_URL=http://python-service:8000
       - JWT_SECRET=${JWT_SECRET:?Set JWT_SECRET in the root .env file}
-      - CORS_ORIGIN=http://localhost:8100
+      - CORS_ORIGIN=http://localhost:8100,http://localhost
       - COOKIE_SECURE=${COOKIE_SECURE:-false}
     depends_on:
       db:
