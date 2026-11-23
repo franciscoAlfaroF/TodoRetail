@@ -16,6 +16,11 @@ describe('HomePage', () => {
 
   const mockApiService = {
     extractPrices: vi.fn().mockReturnValue(of({ status: 'ok', results: [] })),
+    getFeaturedProducts: vi.fn().mockReturnValue(of({
+      status: 'success',
+      updatedAt: null,
+      results: [],
+    })),
     getSavedProducts: vi.fn().mockReturnValue(of([])),
     saveProduct: vi.fn(),
     removeSavedProduct: vi.fn(),
