@@ -32,4 +32,9 @@ export class AppController {
     }
     return this.appService.delegateExtractionToPython(body.query, requestId);
   }
+
+  @Get('featured')
+  getFeaturedProducts() {
+    return this.appService.getFeaturedProducts();
+  }
 }

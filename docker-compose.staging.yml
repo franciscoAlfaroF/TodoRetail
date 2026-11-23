@@ -75,6 +75,25 @@ services:
       - staging
     restart: unless-stopped
 
+  featured-refresh:
+    build:
+      context: ./backend
+    command: ["npm", "run", "start:featured-refresh"]
+    logging: *default-logging
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:?Set POSTGRES_USER in .env.staging}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env.staging}@db:5432/${POSTGRES_DB:?Set POSTGRES_DB in .env.staging}
+      PYTHON_SERVICE_URL: http://python-service:8000
+    depends_on:
+      db:
+        condition: service_healthy
+      python-service:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    networks:
+      - staging
+    restart: unless-stopped
+
   frontend:
     build:
       context: ./frontend

@@ -99,6 +99,72 @@
       <ion-card-content>Aún no has guardado productos. Inicia sesión y marca un producto de los resultados.</ion-card-content>
     </ng-template>
   </ion-card>
+
+  <section *ngIf="!showSavedProducts && !query.trim() && !loading" aria-labelledby="featured-title">
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title id="featured-title">Más vendidos</ion-card-title>
+        <ion-card-subtitle *ngIf="featuredUpdatedAt">
+          Selección de las tiendas · Actualizado {{ featuredUpdatedAt | date:'short' }}
+        </ion-card-subtitle>
+        <ion-card-subtitle *ngIf="!featuredUpdatedAt && !featuredLoading">
+          Productos destacados de Jumbo, Santa Isabel y Unimarc
+        </ion-card-subtitle>
+      </ion-card-header>
+
+      <ion-card-content *ngIf="featuredLoading && featuredGroups.length === 0" class="ion-text-center">
+        <ion-spinner></ion-spinner>
+        <p>Cargando productos destacados...</p>
+      </ion-card-content>
+
+      <ion-text color="danger" *ngIf="featuredError && featuredGroups.length === 0">
+        <p role="alert" class="ion-text-center">{{ featuredError }}</p>
+      </ion-text>
+
+      <ion-text color="medium" *ngIf="!featuredLoading && !featuredError && featuredGroups.length === 0">
+        <p role="status" class="ion-text-center">Aún no hay productos destacados en caché.</p>
+      </ion-text>
+
+      <ion-accordion-group *ngIf="featuredGroups.length > 0" multiple="true">
+        <ion-accordion *ngFor="let group of featuredGroups" [value]="'featured-' + group.name">
+          <ion-item slot="header" color="light">
+            <ion-label>
+              <h2 class="ion-text-wrap"><b>{{ group.name }}</b></h2>
+              <p>Desde ${{ group.minPrice }} (en {{ group.uniqueSupermarkets }} supermercados)</p>
+            </ion-label>
+          </ion-item>
+          <div class="ion-padding" slot="content">
+            <ion-button
+              *ngIf="isAuthenticated$ | async"
+              size="small"
+              fill="outline"
+              (click)="toggleSavedProduct(group)"
+            >
+              <ion-icon [name]="isProductSaved(group) ? 'bookmark' : 'bookmark-outline'" slot="start"></ion-icon>
+              {{ isProductSaved(group) ? 'Quitar de guardados' : 'Guardar producto' }}
+            </ion-button>
+            <ion-list lines="full">
+              <ion-item *ngFor="let price of group.prices">
+                <ion-label class="ion-text-wrap">
+                  <h2>
+                    {{ price.supermarket }}
+                    <ion-badge color="danger" *ngIf="price.is_offer" class="ion-margin-start">¡Oferta!</ion-badge>
+                  </h2>
+                  <p>{{ price.original_name }}</p>
+                </ion-label>
+                <ion-note slot="end" [color]="price.price === group.minPrice ? 'success' : 'medium'">
+                  ${{ price.price }}
+                </ion-note>
+                <ion-button *ngIf="price.url" slot="end" fill="clear" [href]="price.url" target="_blank" size="small">
+                  <ion-icon name="open-outline" slot="icon-only"></ion-icon>
+                </ion-button>
+              </ion-item>
+            </ion-list>
+          </div>
+        </ion-accordion>
+      </ion-accordion-group>
+    </ion-card>
+  </section>
   
   <ion-item *ngIf="!showSavedProducts && (groupedProducts.length > 0 || loading)" lines="none">
     <ion-label>Ordenar por precio</ion-label>

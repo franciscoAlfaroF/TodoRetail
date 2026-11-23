@@ -33,6 +33,20 @@ model Product {
   createdAt   DateTime @default(now())
 }
 
+model FeaturedProduct {
+  id          Int      @id @default(autoincrement())
+  supermarket String
+  name        String
+  productKey  String
+  price       Float
+  isOffer     Boolean  @default(false)
+  url         String?
+  fetchedAt   DateTime @default(now())
+
+  @@unique([supermarket, productKey])
+  @@index([supermarket, fetchedAt])
+}
+
 model SavedProduct {
   id         Int      @id @default(autoincrement())
   userId     Int

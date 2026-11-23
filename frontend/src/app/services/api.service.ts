@@ -8,11 +8,17 @@ export interface ProductResult {
   name: string;
   price: number;
   is_offer?: boolean;
-  url?: string;
+  url?: string | null;
 }
 
 export interface ExtractResponse {
   status: string;
+  results: ProductResult[];
+}
+
+export interface FeaturedProductsResponse {
+  status: string;
+  updatedAt: string | null;
   results: ProductResult[];
 }
 
@@ -32,6 +38,10 @@ export class ApiService {
 
   extractPrices(query: string): Observable<ExtractResponse> {
     return this.http.post<ExtractResponse>(`${this.apiUrl}/extract`, { query });
+  }
+
+  getFeaturedProducts(): Observable<FeaturedProductsResponse> {
+    return this.http.get<FeaturedProductsResponse>(`${this.apiUrl}/featured`);
   }
 
   getSavedProducts(): Observable<SavedProduct[]> {

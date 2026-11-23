@@ -14,6 +14,7 @@
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
+    "start:featured-refresh": "node dist/featured-refresh.js",
     "admin:promote": "node scripts/promote-admin.mjs",
     "lint": "oxlint --type-aware src/ test/",
     "test": "vitest run",

@@ -28,6 +28,32 @@ def test_health_check_reports_service_status():
     assert health_check() == {"status": "ok", "service": "python-fastapi"}
 
 
+def test_featured_endpoint_returns_products_and_per_source_status(monkeypatch):
+    monkeypatch.setattr(
+        "main.scrape_featured_products",
+        lambda: (
+            [
+                {
+                    "supermarket": "Jumbo",
+                    "name": "Leche",
+                    "price": 1000,
+                    "is_offer": False,
+                    "url": "https://www.jumbo.cl/leche/p",
+                }
+            ],
+            [{"supermarket": "Jumbo", "status": "ok", "result_count": 1}],
+        ),
+    )
+
+    from main import get_featured_products
+
+    response = get_featured_products()
+
+    assert response.status == "success"
+    assert response.results[0].supermarket == "Jumbo"
+    assert response.sources[0].result_count == 1
+
+
 def test_extract_returns_empty_results_when_no_supermarkets_are_requested():
     response = extract_data(
         ExtractionRequest(query="leche", supermarkets=[]), create_request()

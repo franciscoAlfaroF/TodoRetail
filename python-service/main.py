@@ -10,6 +10,7 @@ from importlib import import_module
 from fastapi import FastAPI, Request
 from pydantic import BaseModel
 from typing import List, Optional
+from featured_scraper import scrape_featured_products
 
 app = FastAPI(title="TodoRetail Python Service")
 logger = logging.getLogger("todoretail")
@@ -71,9 +72,11 @@ async def log_requests(request: Request, call_next):
             )
         )
 
+
 class ExtractionRequest(BaseModel):
     query: str
     supermarkets: List[str]
+
 
 class ProductResult(BaseModel):
     supermarket: str
@@ -82,13 +85,34 @@ class ProductResult(BaseModel):
     is_offer: bool = False
     url: Optional[str] = None
 
+
 class ExtractionResponse(BaseModel):
     status: str
     results: List[ProductResult]
 
+
+class FeaturedSource(BaseModel):
+    supermarket: str
+    status: str
+    result_count: int
+
+
+class FeaturedResponse(BaseModel):
+    status: str
+    results: List[ProductResult]
+    sources: List[FeaturedSource]
+
+
 @app.get("/health")
 def health_check():
     return {"status": "ok", "service": "python-fastapi"}
+
+
+@app.get("/featured", response_model=FeaturedResponse)
+def get_featured_products():
+    results, sources = scrape_featured_products()
+    return FeaturedResponse(status="success", results=results, sources=sources)
+
 
 @app.post("/extract", response_model=ExtractionResponse)
 def extract_data(request: ExtractionRequest, http_request: Request):

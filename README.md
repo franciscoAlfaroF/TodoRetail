@@ -33,6 +33,7 @@ Familias, estudiantes, dueños de casa y cualquier persona interesada en optimiz
 * Despliegue de resultados agrupados mediante interfaz de acordeón.
 * Visualización del precio más bajo garantizado.
 * Redirección directa al supermercado para concretar la compra.
+* Pantalla de inicio con productos de las secciones oficiales de más vendidos de Jumbo, Santa Isabel y Unimarc. Un worker los consulta en segundo plano y los mantiene en una caché PostgreSQL compartida, refrescada cada 12 horas; la página inicial lee esa caché y no ejecuta scraping al abrirse. Si una tienda falla, se conservan sus últimos productos válidos.
 
 ## 10. Arquitectura General
 El sistema utiliza una arquitectura orientada a microservicios:
@@ -131,5 +132,5 @@ docker compose up --build -d
 * **PWA**: en staging se puede instalar TodoRetail desde la opción de instalación del navegador. La app shell y recursos estáticos se guardan para abrir la aplicación sin conexión después de la primera carga; búsqueda, autenticación y datos requieren conexión con las APIs.
 * **Enlace al prototipo Figma**: [EN CONSTRUCCIÓN]
 * **Documentación de la API**: [EN CONSTRUCCIÓN]
-* **Limitaciones**: La búsqueda depende de la latencia y disponibilidad de los sitios web externos, ya que opera en tiempo real.
-* **Trabajo Futuro**: Agregar más supermercados, mejorar filtros especificos por prodcuto, mejoras UI y UX, capacidad de crear cuentas para guardas productos y generar recomendaciones, implementar almacenamiento en caché (Redis) e indexación periódica para respuestas instantáneas.
+* **Limitaciones**: La búsqueda por término depende de la latencia y disponibilidad de los sitios web externos, ya que opera en tiempo real. La selección de inicio proviene de secciones públicas que pueden cambiar o quedar temporalmente indisponibles; cuando eso ocurre, se muestran los últimos datos válidos disponibles.
+* **Trabajo Futuro**: Agregar más supermercados, mejorar filtros específicos por producto, continuar mejoras de UI/UX, desarrollar recomendaciones y evaluar caché para las búsquedas en tiempo real.

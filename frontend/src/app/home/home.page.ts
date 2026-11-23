@@ -9,7 +9,7 @@ export interface SupermarketPrice {
   supermarket: string;
   price: number;
   is_offer: boolean;
-  url?: string;
+  url?: string | null;
   original_name: string;
 }
 
@@ -30,6 +30,10 @@ export class HomePage implements OnInit, OnDestroy {
   query: string = '';
   groupedProducts: GroupedProduct[] = [];
   originalGroups: GroupedProduct[] = [];
+  featuredGroups: GroupedProduct[] = [];
+  featuredUpdatedAt: string | null = null;
+  featuredLoading = false;
+  featuredError: string | null = null;
   loading: boolean = false;
   error: string | null = null;
   savedProductNotFound: boolean = false;
@@ -56,6 +60,7 @@ export class HomePage implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
+    this.loadFeaturedProducts();
     this.savedProductsSubscription = this.isAuthenticated$
       .pipe(
         distinctUntilChanged(),
@@ -74,6 +79,24 @@ export class HomePage implements OnInit, OnDestroy {
           this.cdr.detectChanges();
         },
       });
+  }
+
+  private loadFeaturedProducts() {
+    this.featuredLoading = true;
+    this.apiService.getFeaturedProducts().subscribe({
+      next: (response) => {
+        this.featuredGroups = this.groupProducts(response.results);
+        this.featuredUpdatedAt = response.updatedAt;
+        this.featuredError = null;
+        this.featuredLoading = false;
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.featuredError = 'No se pudieron cargar los productos destacados.';
+        this.featuredLoading = false;
+        this.cdr.detectChanges();
+      },
+    });
   }
 
   goToLogin() {

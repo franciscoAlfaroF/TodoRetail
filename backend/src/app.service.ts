@@ -95,6 +95,36 @@ export class AppService {
     return data;
   }
 
+  async getFeaturedProducts() {
+    const products = await this.prisma.featuredProduct.findMany({
+      orderBy: [{ supermarket: 'asc' }, { name: 'asc' }],
+      select: {
+        supermarket: true,
+        name: true,
+        price: true,
+        isOffer: true,
+        url: true,
+        fetchedAt: true,
+      },
+    });
+
+    return {
+      status: 'success',
+      updatedAt: products.length
+        ? new Date(
+            Math.min(...products.map((product) => product.fetchedAt.getTime())),
+          ).toISOString()
+        : null,
+      results: products.map((product) => ({
+        supermarket: product.supermarket,
+        name: product.name,
+        price: product.price,
+        is_offer: product.isOffer,
+        url: product.url,
+      })),
+    };
+  }
+
   private async checkDatabase(): Promise<'ok' | 'error'> {
     try {
       await this.prisma.$queryRaw`SELECT 1`;

@@ -1,6 +1,73 @@
 from playwright.sync_api import sync_playwright
 from typing import List, Dict
 import time
+from featured_scraper import scrape_homepage
+
+
+def search_featured_products() -> List[Dict]:
+    products = scrape_homepage(
+        "https://www.unimarc.cl/",
+        "más vendidos",
+        "a[href*='/product/']",
+        """() => {
+            const heading = Array.from(
+                document.querySelectorAll('h1, h2, h3, h4')
+            ).find(
+                element => element.innerText.toLowerCase().includes(
+                    'más vendidos'
+                )
+            );
+            let section = heading;
+            while (section) {
+                const hasProducts = Array.from(
+                    section.querySelectorAll('a')
+                ).some(anchor => anchor.href.includes('/product/'));
+                if (hasProducts) break;
+                section = section.parentElement;
+            }
+            if (!section) return [];
+
+            const seen = new Set();
+            return Array.from(
+                section.querySelectorAll('a[href*="/product/"]')
+            )
+                .flatMap(anchor => {
+                    const url = anchor.href;
+                    if (seen.has(url)) return [];
+                    seen.add(url);
+
+                    const card = anchor.closest('section[id^="shelf__vertical"]');
+                    if (!card) return [];
+                    const text = card.innerText;
+                    const unitPrice = text.match(
+                        /\\$\\s*[\\d.]+\\s*c\\/u\\b/i
+                    );
+                    const prices = Array.from(
+                        text.matchAll(/\\$\\s*([\\d.]+)/g)
+                    ).map(
+                        match => Number(match[1].replace(/\\./g, ''))
+                    );
+                    const price = unitPrice
+                        ? Number(
+                            unitPrice[0].match(/[\\d.]+/)[0]
+                                .replace(/\\./g, '')
+                        )
+                        : (prices[0] || 0);
+                    const listPrice = unitPrice ? price : (prices[1] || price);
+
+                    return [{
+                        name: anchor.getAttribute('title')?.trim() ||
+                            anchor.innerText.trim(),
+                        price,
+                        is_offer: /\\d+\\s*%/.test(text) ||
+                            price < listPrice,
+                        url
+                    }];
+                });
+        }""",
+    )
+    return products
+
 
 def search_unimarc(query: str) -> List[Dict]:
     results = []
