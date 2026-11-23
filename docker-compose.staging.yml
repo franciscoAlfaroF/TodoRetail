@@ -8,7 +8,9 @@ x-logging: &default-logging
 
 services:
   db:
-    image: postgres:15-alpine
+    build:
+      context: ./database
+    image: todoretail-postgres:15-alpine
     logging: *default-logging
     environment:
       POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in .env.staging}
@@ -78,7 +80,7 @@ services:
   featured-refresh:
     build:
       context: ./backend
-    command: ["npm", "run", "start:featured-refresh"]
+    command: ["node", "dist/featured-refresh.js"]
     logging: *default-logging
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:?Set POSTGRES_USER in .env.staging}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env.staging}@db:5432/${POSTGRES_DB:?Set POSTGRES_DB in .env.staging}

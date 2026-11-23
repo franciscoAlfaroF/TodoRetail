@@ -217,18 +217,13 @@ jobs:
             context: ./python-service
             image: todoretail-python:ci
           - service: postgres
-            context: ""
-            image: postgres:15-alpine
+            context: ./database
+            image: todoretail-postgres:ci
     steps:
       - uses: actions/checkout@v4
 
       - name: Build container image
-        if: matrix.context != ''
         run: docker build --pull --tag ${{ matrix.image }} ${{ matrix.context }}
-
-      - name: Pull PostgreSQL image
-        if: matrix.context == ''
-        run: docker pull ${{ matrix.image }}
 
       - name: Scan container image
         uses: aquasecurity/trivy-action@v0.36.0
