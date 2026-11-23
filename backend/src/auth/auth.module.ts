@@ -6,6 +6,7 @@ import { AuthService } from './auth.service.js';
 import { AuthController } from './auth.controller.js';
 import { JwtStrategy } from './strategies/jwt.strategy.js';
 import { PrismaService } from '../prisma.service.js';
+import { getJwtSecret } from './jwt-secret.js';
 
 @Module({
   imports: [
@@ -14,7 +15,7 @@ import { PrismaService } from '../prisma.service.js';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
-        secret: configService.get<string>('JWT_SECRET') || 'todoretail_jwt_super_secret_key_2026',
+        secret: getJwtSecret(configService),
         signOptions: {
           expiresIn: (configService.get<string>('JWT_EXPIRATION') || '24h') as any,
         },

@@ -1,10 +1,16 @@
-import { Injectable, ConflictException, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { Prisma, Role } from '@prisma/client';
 import { PrismaService } from '../prisma.service.js';
 import { RegisterDto } from './dto/register.dto.js';
 import { LoginDto } from './dto/login.dto.js';
 import bcrypt from 'bcryptjs';
-import { Role } from '@prisma/client';
 
 @Injectable()
 export class AuthService {
@@ -26,14 +32,12 @@ export class AuthService {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(registerDto.password, salt);
 
-    const role = registerDto.role === 'ADMIN' ? Role.ADMIN : Role.USER;
-
     const user = await this.prisma.user.create({
       data: {
         email,
         password: hashedPassword,
         name: registerDto.name || null,
-        role,
+        role: Role.USER,
       },
       select: {
         id: true,
@@ -100,6 +104,108 @@ export class AuthService {
     }
 
     return user;
+  }
+
+  async exportAccount(userId: number) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        createdAt: true,
+        updatedAt: true,
+        savedProducts: {
+          select: {
+            name: true,
+            createdAt: true,
+          },
+          orderBy: { createdAt: 'asc' },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('Usuario no encontrado');
+    }
+
+    return {
+      exportedAt: new Date().toISOString(),
+      account: user,
+    };
+  }
+
+  async deleteAccount(userId: number) {
+    return this.prisma.$transaction(async (transaction) => {
+      const user = await transaction.user.findUnique({
+        where: { id: userId },
+        select: { id: true, role: true },
+      });
+
+      if (!user) {
+        throw new UnauthorizedException('Usuario no encontrado');
+      }
+
+      if (user.role === Role.ADMIN) {
+        const adminCount = await transaction.user.count({
+          where: { role: Role.ADMIN },
+        });
+
+        if (adminCount <= 1) {
+          throw new ConflictException(
+            'No se puede eliminar la cuenta del último administrador',
+          );
+        }
+      }
+
+      return transaction.user.delete({
+        where: { id: userId },
+        select: { id: true },
+      });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  }
+
+  async updateUserRole(userId: number, role: Role, actorId: number) {
+    if (userId === actorId) {
+      throw new BadRequestException('No puedes cambiar tu propio rol');
+    }
+
+    return this.prisma.$transaction(
+      async (transaction) => {
+        const target = await transaction.user.findUnique({
+          where: { id: userId },
+          select: { id: true, role: true },
+        });
+
+        if (!target) {
+          throw new NotFoundException('Usuario no encontrado');
+        }
+
+        if (target.role === Role.ADMIN && role === Role.USER) {
+          const adminCount = await transaction.user.count({
+            where: { role: Role.ADMIN },
+          });
+
+          if (adminCount <= 1) {
+            throw new ConflictException('No se puede quitar el rol del último administrador');
+          }
+        }
+
+        return transaction.user.update({
+          where: { id: userId },
+          data: { role },
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            role: true,
+            createdAt: true,
+          },
+        });
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
   }
 
   private generateToken(userId: number, email: string, role: string): string {

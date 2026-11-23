@@ -15,21 +15,12 @@ export class AuthInterceptor implements HttpInterceptor {
   constructor(private authService: AuthService) {}
 
   intercept(request: HttpRequest<unknown>, next: HttpHandler): Observable<HttpEvent<unknown>> {
-    const token = this.authService.getToken();
+    const credentialedRequest = request.clone({ withCredentials: true });
 
-    if (token) {
-      request = request.clone({
-        setHeaders: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-    }
-
-    return next.handle(request).pipe(
+    return next.handle(credentialedRequest).pipe(
       catchError((error: HttpErrorResponse) => {
         if (error.status === 401) {
-          // Sesión expirada o token inválido
-          this.authService.logout();
+          this.authService.clearLocalSession();
         }
         return throwError(() => error);
       }),

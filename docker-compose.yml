@@ -1,14 +1,19 @@
-version: '3.8'
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
 
 services:
   db:
     image: postgres:15-alpine
+    logging: *default-logging
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-todoretail}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secret}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the root .env file}
       POSTGRES_DB: ${POSTGRES_DB:-todoretail_db}
     ports:
-      - "5432:5432"
+      - "127.0.0.1:${DB_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -20,30 +25,75 @@ services:
   python-service:
     build:
       context: ./python-service
+    logging: *default-logging
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     environment:
       - ENVIRONMENT=development
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    restart: unless-stopped
 
   backend:
     build:
       context: ./backend
+    logging: *default-logging
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-todoretail}:${POSTGRES_PASSWORD:-secret}@db:5432/${POSTGRES_DB:-todoretail_db}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-todoretail}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the root .env file}@db:5432/${POSTGRES_DB:-todoretail_db}
+      - PYTHON_SERVICE_URL=http://python-service:8000
+      - JWT_SECRET=${JWT_SECRET:?Set JWT_SECRET in the root .env file}
+      - CORS_ORIGIN=http://localhost:8100,http://localhost
+      - COOKIE_SECURE=${COOKIE_SECURE:-false}
+    depends_on:
+      db:
+        condition: service_healthy
+      python-service:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+
+  featured-refresh:
+    build:
+      context: ./backend
+    command: ["npm", "run", "start:featured-refresh"]
+    logging: *default-logging
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-todoretail}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the root .env file}@db:5432/${POSTGRES_DB:-todoretail_db}
       - PYTHON_SERVICE_URL=http://python-service:8000
     depends_on:
       db:
         condition: service_healthy
       python-service:
-        condition: service_started
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
 
   frontend:
     build:
       context: ./frontend
+    logging: *default-logging
     ports:
-      - "8100:80"
+      - "127.0.0.1:8100:80"
     depends_on:
       - backend
 

@@ -1,7 +1,60 @@
 from playwright.sync_api import sync_playwright
-import json
 from typing import List, Dict
 import time
+from featured_scraper import scrape_homepage
+
+
+def search_featured_products() -> List[Dict]:
+    return scrape_homepage(
+        "https://www.jumbo.cl/",
+        "lo más vendidos",
+        "[data-gtm-product-click]",
+        """() => {
+            const heading = Array.from(
+                document.querySelectorAll('h1, h2, h3, h4')
+            ).find(
+                element => element.innerText.toLowerCase().includes(
+                    'lo más vendidos'
+                )
+            );
+            const section = heading?.closest('section');
+            if (!section) return [];
+
+            const seen = new Set();
+            return Array.from(
+                section.querySelectorAll('[data-gtm-product-click]')
+            )
+                .flatMap(element => {
+                    try {
+                        const rawProduct = element.getAttribute(
+                            'data-gtm-product-click'
+                        );
+                        const product = JSON.parse(rawProduct);
+                        const key = product.name || element.href;
+                        if (
+                            !product.name ||
+                            !product.price ||
+                            seen.has(key)
+                        ) return [];
+                        seen.add(key);
+                        const card =
+                            element.closest('div.w-full') ||
+                            element.parentElement;
+                        return [{
+                            name: product.name,
+                            price: Number(product.price),
+                            is_offer: /\\boferta\\b|%\\s*dcto/i.test(
+                                card?.innerText || ''
+                            ),
+                            url: element.href || null
+                        }];
+                    } catch {
+                        return [];
+                    }
+                });
+        }""",
+    )
+
 
 def search_jumbo(query: str) -> List[Dict]:
     results = []
@@ -69,9 +122,6 @@ def search_jumbo(query: str) -> List[Dict]:
                 
                 if len(results) >= 50:
                     break
-                    
-        except Exception as e:
-            print(f"Error scraping Jumbo: {e}")
         finally:
             browser.close()
             

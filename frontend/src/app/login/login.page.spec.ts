@@ -15,8 +15,8 @@ describe('LoginPage', () => {
 
   const mockAuthService = {
     isAuthenticated: false,
-    login: vi.fn().mockReturnValue(of({ message: 'ok', user: { email: 'a@b.com' }, accessToken: 'tok' })),
-    register: vi.fn().mockReturnValue(of({ message: 'ok', user: { email: 'a@b.com' }, accessToken: 'tok' })),
+    login: vi.fn().mockReturnValue(of({ message: 'ok', user: { email: 'a@b.com' } })),
+    register: vi.fn().mockReturnValue(of({ message: 'ok', user: { email: 'a@b.com' } })),
   };
 
   beforeEach(async () => {
@@ -44,6 +44,7 @@ describe('LoginPage', () => {
     expect(component).toBeTruthy();
     expect(component.loginForm).toBeDefined();
     expect(component.registerForm).toBeDefined();
+    expect(component.registerForm.contains('role')).toBe(false);
   });
 
   it('should validate email format in loginForm', () => {

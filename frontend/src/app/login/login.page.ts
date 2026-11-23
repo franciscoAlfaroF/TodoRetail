@@ -43,7 +43,6 @@ export class LoginPage implements OnInit {
       name: ['', [Validators.required, Validators.minLength(2)]],
       email: ['', [Validators.required, Validators.email]],
       password: ['', [Validators.required, Validators.minLength(6)]],
-      role: ['USER', [Validators.required]],
     });
   }
 

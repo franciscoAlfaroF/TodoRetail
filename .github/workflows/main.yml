@@ -1,111 +1,234 @@
-name: DevSecOps Pipeline EP1
+name: TodoRetail CI
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  quality-and-security:
+  frontend-quality:
+    name: Frontend checks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: TruffleHog Secret Scanner (Paso 11)
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Lint
+        working-directory: frontend
+        run: npm run lint
+
+      - name: Unit tests
+        working-directory: frontend
+        run: npm test -- --watch=false
+
+      - name: Production build
+        working-directory: frontend
+        run: npm run build -- --configuration production
+
+      - name: Verify PWA production artifacts
+        working-directory: frontend
+        run: |
+          test -f www/manifest.webmanifest
+          test -f www/ngsw.json
+          test -f www/ngsw-worker.js
+          node --input-type=module -e "import fs from 'node:fs'; const manifest = JSON.parse(fs.readFileSync('www/manifest.webmanifest', 'utf8')); if (manifest.name !== 'TodoRetail - Comparador de precios' || manifest.display !== 'standalone' || manifest.start_url !== '/') throw new Error('Invalid TodoRetail PWA manifest'); for (const icon of manifest.icons) { if (!fs.existsSync('www/' + icon.src)) throw new Error('Missing PWA icon: ' + icon.src); }"
+
+      - name: Audit dependencies
+        working-directory: frontend
+        run: npm audit --audit-level=high
+
+  backend-quality:
+    name: Backend checks
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://todoretail:ci-password@localhost:5432/todoretail_test
+      JWT_SECRET: ci-only-jwt-secret-for-automated-tests-32chars-min
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: todoretail
+          POSTGRES_PASSWORD: ci-password
+          POSTGRES_DB: todoretail_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U todoretail -d todoretail_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Generate Prisma client
+        working-directory: backend
+        run: npx prisma generate
+
+      - name: Lint
+        working-directory: backend
+        run: npm run lint
+
+      - name: Unit tests
+        working-directory: backend
+        run: npm run test
+
+      - name: End-to-end tests
+        working-directory: backend
+        run: npm run test:e2e
+
+      - name: Production build
+        working-directory: backend
+        run: npm run build
+
+      - name: Audit dependencies
+        working-directory: backend
+        run: npm audit --audit-level=high
+
+  python-quality:
+    name: Python checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: python-service/requirements.txt
+
+      - name: Install dependencies
+        working-directory: python-service
+        run: python -m pip install -r requirements.txt pytest flake8 pip-audit
+
+      - name: Lint
+        working-directory: python-service
+        run: python -m flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+
+      - name: Unit tests
+        working-directory: python-service
+        run: python -m pytest tests
+
+      - name: Audit dependencies
+        working-directory: python-service
+        run: python -m pip_audit -r requirements.txt
+
+  secret-scan:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Scan repository for secrets
         uses: trufflesecurity/trufflehog@main
         with:
           path: ./
           extra_args: --only-verified
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      # Analisis de dependencias vulnerables (Paso 10)
-      - name: NPM Audit (Backend)
-        working-directory: ./backend
-        run: npm audit --audit-level=high || true
-
-      # Linting (Pasos 3 y 4)
-      - name: Python Linting (Flake8)
-        working-directory: ./python-service
-        run: |
-          pip install flake8
-          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics || true
-
-      # Pruebas Unitarias (Pasos 5, 6 y 7)
-      - name: Backend Unit Tests
-        working-directory: ./backend
-        run: |
-          npm ci
-          npx prisma generate
-          npm run test
-
-      - name: Python Unit Tests
-        working-directory: ./python-service
-        run: |
-          pip install -r requirements.txt pytest
-          pytest || echo "Warning: Python tests failed"
-
-  build-and-scan-containers:
-    needs: quality-and-security
+  compose-validation:
+    name: Docker Compose validation
     runs-on: ubuntu-latest
+    env:
+      JWT_SECRET: ci-only-jwt-secret-for-compose-validation-32chars
+      POSTGRES_PASSWORD: ci-only-compose-db-password
     steps:
       - uses: actions/checkout@v4
 
-      # Construccion de imagenes (Pasos 12, 13, 14, 15)
-      - name: Build Frontend Image
-        run: docker build -t todoretail-frontend:latest ./frontend
+      - name: Validate Compose configuration
+        run: docker compose config --quiet
 
-      - name: Build Backend Image
-        run: docker build -t todoretail-backend:latest ./backend
-
-      - name: Build Python Image
-        run: docker build -t todoretail-python:latest ./python-service
-
-      # Analisis de vulnerabilidades de las imagenes (Paso 16)
-      - name: Trivy Vulnerability Scanner (Frontend)
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: 'todoretail-frontend:latest'
-          format: 'table'
-          exit-code: '0'
-          severity: 'CRITICAL,HIGH'
+      - name: Validate staging Compose configuration
+        run: docker compose --env-file .env.staging.example -f docker-compose.staging.yml config --quiet
 
   infrastructure-check:
-    needs: quality-and-security
+    name: Terraform checks
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./infrastructure
+        working-directory: infrastructure
     steps:
       - uses: actions/checkout@v4
+
       - uses: hashicorp/setup-terraform@v3
-      
-      # Validacion de Terraform (Paso 17)
-      - name: Terraform Format Check
-        run: terraform fmt
-      - name: Terraform Init
-        run: terraform init
-      - name: Terraform Validate
+
+      - name: Check formatting
+        run: terraform fmt -check -recursive
+
+      - name: Initialize providers
+        run: terraform init -backend=false
+
+      - name: Validate configuration
         run: terraform validate
 
-  deploy-staging:
-    needs: [build-and-scan-containers, infrastructure-check]
+  container-build-and-scan:
+    name: Build and scan ${{ matrix.service }}
+    needs:
+      - frontend-quality
+      - backend-quality
+      - python-quality
+      - secret-scan
+      - compose-validation
+      - infrastructure-check
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: frontend
+            context: ./frontend
+            image: todoretail-frontend:ci
+          - service: backend
+            context: ./backend
+            image: todoretail-backend:ci
+          - service: python
+            context: ./python-service
+            image: todoretail-python:ci
+          - service: postgres
+            context: ""
+            image: postgres:15-alpine
     steps:
       - uses: actions/checkout@v4
-      
-      # Despliegue en Staging (Paso 18)
-      - name: Deploy to Staging Environment
-        run: |
-          echo "Desplegando en ambiente de staging usando credenciales seguras..."
-          echo "Simulando ejecucion de docker compose o ECS update..."
-          echo "Despliegue exitoso."
+
+      - name: Build container image
+        if: matrix.context != ''
+        run: docker build --pull --tag ${{ matrix.image }} ${{ matrix.context }}
+
+      - name: Pull PostgreSQL image
+        if: matrix.context == ''
+        run: docker pull ${{ matrix.image }}
+
+      - name: Scan container image
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ matrix.image }}
+          format: table
+          severity: CRITICAL,HIGH
+          exit-code: "1"
