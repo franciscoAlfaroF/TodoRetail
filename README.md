@@ -55,7 +55,17 @@ Los datos se obtienen mediante *Web Scraping* en tiempo real desde las plataform
 * **Unimarc** (SMU)
 
 ## 13. Descripción de la Capacidad Adaptativa o Inteligente
-El módulo Python incluye un algoritmo NLP (Natural Language Processing) basado en reglas estrictas y similitud de Jaccard que "entiende" los nombres de los productos. Estandariza volúmenes (cc, ml, l), elimina palabras vacías ("desechable", "retornable") y previene la mezcla de variantes incompatibles (ej. "Light" vs "Normal", "Vainilla" vs "Chocolate"), logrando agrupar ofertas dispares en un solo ítem conceptual para el usuario.
+El agrupamiento se ejecuta en el frontend Angular, en `HomePage.groupProducts`, sobre los nombres y precios recuperados desde los supermercados. Normaliza texto y unidades (cc/ml, gr/g, l/lt), elimina palabras vacías y compara tokens con similitud de Jaccard: agrupa cuando la similitud es mayor a 0,45 y las variantes detectadas (por ejemplo, entera/descremada, light/zero o frutilla/vainilla) coinciden. El grupo muestra los precios por tienda y destaca el menor; no utiliza el perfil ni datos personales del usuario.
+
+### Evaluación reproducible del agrupamiento
+La prueba `measures grouping precision and recall on labeled product cases` en `frontend/src/app/home/home.page.spec.ts` compara los grupos producidos con etiquetas de equivalencia definidas para 12 nombres de productos de prueba (casos correctos y variantes/productos no equivalentes). Se ejecuta junto con las pruebas frontend:
+```powershell
+cd frontend
+npm test -- --watch=false
+```
+Resultado del conjunto de prueba: **4 verdaderos positivos, 2 falsos positivos y 0 falsos negativos**; precisión por pares = **4/6 = 66,7 %**, exhaustividad (recall) = **4/4 = 100 %** y F1 = **80 %**. Los 12 resultados sin agrupamiento se muestran individualmente; el agrupamiento los reduce a 7 tarjetas (41,7 % menos) y permite comparar cuatro pares equivalentes etiquetados. El caso incorrecto observado es que `Leche Entera Colun 1 L` y `Leche Entera Soprole 1 L` terminan en el mismo grupo por compartir tokens. El test también cubre que `125 g` y `125gr` se normalicen igual; la conversión de `gr` junto a la cantidad se corrigió a partir de esa evaluación.
+
+Estos números son una evaluación controlada sobre un conjunto pequeño y construido manualmente; no estiman la precisión sobre todo el catálogo real. Actualmente no se explica al usuario por qué se creó cada grupo ni se ofrece aceptar, modificar o rechazar agrupaciones. Mejorar la detección de marca, ampliar y validar el conjunto con resultados reales y añadir control del usuario son pendientes; la similitud puede producir agrupaciones incorrectas entre marcas o productos con nombres parecidos.
 
 ## 14. Instrucciones de Instalación
 1. Clonar el repositorio.

@@ -161,6 +161,111 @@ describe('HomePage', () => {
     }
   });
 
+  it('measures grouping precision and recall on labeled product cases', () => {
+    const labeledProducts = [
+      { supermarket: 'Jumbo', name: 'Coca Cola Original 1.5 L', label: 'cola-original' },
+      { supermarket: 'Unimarc', name: 'Coca-Cola Original 1,5L', label: 'cola-original' },
+      { supermarket: 'Santa Isabel', name: 'Coca Cola Zero 1.5 L', label: 'cola-zero' },
+      { supermarket: 'Jumbo', name: 'Leche Entera Colun 1 L', label: 'leche-colun-entera' },
+      { supermarket: 'Unimarc', name: 'Leche Entera Colun 1L', label: 'leche-colun-entera' },
+      { supermarket: 'Santa Isabel', name: 'Leche Entera Soprole 1 L', label: 'leche-soprole-entera' },
+      { supermarket: 'Jumbo', name: 'Leche Descremada Colun 1 L', label: 'leche-colun-descremada' },
+      { supermarket: 'Jumbo', name: 'Yogur Soprole Frutilla 125 g', label: 'yogur-frutilla' },
+      { supermarket: 'Unimarc', name: 'Yogurt Soprole Frutilla 125gr', label: 'yogur-frutilla' },
+      { supermarket: 'Santa Isabel', name: 'Yogur Soprole Vainilla 125 g', label: 'yogur-vainilla' },
+      { supermarket: 'Jumbo', name: 'Aceite Chef Maravilla 1 L', label: 'aceite-chef' },
+      { supermarket: 'Unimarc', name: 'Aceite Vegetal Chef Maravilla 1L', label: 'aceite-chef' },
+    ];
+    const keyOf = (product: { supermarket: string; name: string }) =>
+      `${product.supermarket}:${product.name}`;
+    const pairKey = (first: string, second: string) =>
+      [first, second].sort().join('|');
+    const expectedPairs = new Set<string>();
+
+    for (let first = 0; first < labeledProducts.length; first++) {
+      for (let second = first + 1; second < labeledProducts.length; second++) {
+        if (labeledProducts[first].label === labeledProducts[second].label) {
+          expectedPairs.add(
+            pairKey(keyOf(labeledProducts[first]), keyOf(labeledProducts[second])),
+          );
+        }
+      }
+    }
+
+    const groups = component.groupProducts(
+      labeledProducts.map((product) => ({
+        supermarket: product.supermarket,
+        name: product.name,
+        price: 1000,
+      })),
+    );
+    const predictedPairs = new Set<string>();
+
+    for (const group of groups) {
+      for (let first = 0; first < group.prices.length; first++) {
+        for (let second = first + 1; second < group.prices.length; second++) {
+          predictedPairs.add(
+            pairKey(
+              keyOf({
+                supermarket: group.prices[first].supermarket,
+                name: group.prices[first].original_name,
+              }),
+              keyOf({
+                supermarket: group.prices[second].supermarket,
+                name: group.prices[second].original_name,
+              }),
+            ),
+          );
+        }
+      }
+    }
+
+    const truePositives = [...predictedPairs].filter((pair) =>
+      expectedPairs.has(pair),
+    ).length;
+    const falsePositives = predictedPairs.size - truePositives;
+    const falseNegatives = expectedPairs.size - truePositives;
+    const precision = truePositives / (truePositives + falsePositives);
+    const recall = truePositives / (truePositives + falseNegatives);
+
+    expect({
+      inputProducts: labeledProducts.length,
+      ungroupedCards: labeledProducts.length,
+      groupedCards: groups.length,
+      truePositives,
+      falsePositives,
+      falseNegatives,
+      precision,
+      recall,
+    }).toEqual({
+      inputProducts: 12,
+      ungroupedCards: 12,
+      groupedCards: 7,
+      truePositives: 4,
+      falsePositives: 2,
+      falseNegatives: 0,
+      precision: 2 / 3,
+      recall: 1,
+    });
+
+    const milkGroup = groups.find((group) =>
+      group.prices.some((price) => price.original_name.includes('Colun') &&
+        price.original_name.includes('Entera')),
+    );
+    const colunMilk = keyOf({
+      supermarket: 'Jumbo',
+      name: 'Leche Entera Colun 1 L',
+    });
+    const soproleMilk = keyOf({
+      supermarket: 'Santa Isabel',
+      name: 'Leche Entera Soprole 1 L',
+    });
+    expect(milkGroup?.prices.map((price) => price.original_name)).toContain(
+      'Leche Entera Soprole 1 L',
+    );
+    expect(predictedPairs.has(pairKey(colunMilk, soproleMilk))).toBe(true);
+  });
+
   it('debounces searches and ignores responses from superseded queries', () => {
     const staleResponse = new Subject<{ status: string; results: [] }>();
     const currentResponse = new Subject<{ status: string; results: [] }>();

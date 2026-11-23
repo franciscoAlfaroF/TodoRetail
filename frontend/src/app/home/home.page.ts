@@ -306,6 +306,7 @@ export class HomePage implements OnInit, OnDestroy {
       let lower = name.toLowerCase();
       // Estandarizar unidades
       lower = lower.replace(/\bcc\b/g, 'ml');
+      lower = lower.replace(/(\d)\s*gr\b/g, '$1g');
       lower = lower.replace(/\bgr\b/g, 'g');
       lower = lower.replace(/\blts?\b/g, 'l');
       // Unir números con unidades (ej "1.25 l" -> "1.25l")
